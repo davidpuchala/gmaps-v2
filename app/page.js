@@ -516,7 +516,7 @@ export default function App() {
 
   // ── Controls ───────────────────────────────────────────────────────────────
   const [mode,           setMode]           = useState("all");
-  const [radius,         setRadius]         = useState(1500);
+  const [radius,         setRadius]         = useState(750);
   const [advanced,       setAdvanced]       = useState({});
   const [customWeights,  setCustomWeights]  = useState(null);
   const [prefLabel,      setPrefLabel]      = useState(null);
@@ -917,37 +917,66 @@ export default function App() {
                       <motion.div initial={{ height:0, opacity:0 }}
                         animate={{ height:"auto", opacity:1 }}
                         exit={{ height:0, opacity:0 }} style={{ overflow:"hidden" }}>
-                        <div onPointerDown={e => e.stopPropagation()}
-                          style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10,
-                          paddingTop:10 }}>
+                        <div style={{ paddingTop:10, display:"flex", flexDirection:"column", gap:10 }}>
+                          {/* Max price — pill buttons (avoids native select/picker) */}
                           <div>
-                            <div style={{ fontSize:12, color:"#5f6368", marginBottom:4 }}>Max price</div>
-                            <select defaultValue=""
-                              onChange={e => setAdvanced(a=>({...a, price_max: (e.target.value && e.target.value !== "4") ? Number(e.target.value) : null}))}
-                              style={{ width:"100%", padding:"7px 10px", border:"1px solid #dadce0",
-                                borderRadius:10, fontSize:13, fontFamily:"'Google Sans',sans-serif" }}>
-                              <option value="">Any</option>
-                              {["€","€€","€€€","€€€€"].map((p,i)=><option key={i} value={i+1}>{p}</option>)}
-                            </select>
+                            <div style={{ fontSize:12, color:"#5f6368", marginBottom:6 }}>Max price</div>
+                            <div style={{ display:"flex", gap:6 }}>
+                              {[["Any",null],["€",1],["€€",2],["€€€",3],["€€€€",null]].map(([label, val]) => {
+                                const active = val === null
+                                  ? !advanced.price_max
+                                  : advanced.price_max === val;
+                                return (
+                                  <button key={label}
+                                    onPointerDown={e => e.stopPropagation()}
+                                    onClick={() => setAdvanced(a => ({ ...a, price_max: val }))}
+                                    style={{ flex:1, padding:"6px 0", border:"1.5px solid",
+                                      borderColor: active ? "#1a73e8" : "#dadce0",
+                                      borderRadius:20, background: active ? "#e8f0fe" : "white",
+                                      color: active ? "#1a73e8" : "#5f6368",
+                                      fontSize:12, fontWeight:600, cursor:"pointer",
+                                      fontFamily:"'Google Sans',sans-serif" }}>
+                                    {label}
+                                  </button>
+                                );
+                              })}
+                            </div>
                           </div>
+                          {/* Dietary — pill buttons */}
                           <div>
-                            <div style={{ fontSize:12, color:"#5f6368", marginBottom:4 }}>Dietary</div>
-                            <select defaultValue=""
-                              onChange={e => setAdvanced(a=>({...a, dietary:e.target.value||null}))}
-                              style={{ width:"100%", padding:"7px 10px", border:"1px solid #dadce0",
-                                borderRadius:10, fontSize:13, fontFamily:"'Google Sans',sans-serif" }}>
-                              <option value="">None</option>
-                              <option value="vegan">Vegan</option>
-                              <option value="seafood">Seafood</option>
-                            </select>
+                            <div style={{ fontSize:12, color:"#5f6368", marginBottom:6 }}>Dietary</div>
+                            <div style={{ display:"flex", gap:6 }}>
+                              {[["None",null],["Vegan","vegan"],["Seafood","seafood"]].map(([label, val]) => {
+                                const active = (advanced.dietary || null) === val;
+                                return (
+                                  <button key={label}
+                                    onPointerDown={e => e.stopPropagation()}
+                                    onClick={() => setAdvanced(a => ({ ...a, dietary: val }))}
+                                    style={{ flex:1, padding:"6px 0", border:"1.5px solid",
+                                      borderColor: active ? "#1a73e8" : "#dadce0",
+                                      borderRadius:20, background: active ? "#e8f0fe" : "white",
+                                      color: active ? "#1a73e8" : "#5f6368",
+                                      fontSize:12, fontWeight:600, cursor:"pointer",
+                                      fontFamily:"'Google Sans',sans-serif" }}>
+                                    {label}
+                                  </button>
+                                );
+                              })}
+                            </div>
                           </div>
-                          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                            <input type="checkbox" id="quiet"
-                              onChange={e => setAdvanced(a=>({...a, quiet:e.target.checked}))}
-                              style={{ accentColor:"#1a73e8" }}/>
-                            <label htmlFor="quiet" style={{ fontSize:13, color:"#3c4043" }}>
-                              Quiet vibe
-                            </label>
+                          {/* Quiet vibe toggle */}
+                          <div style={{ display:"flex", gap:6 }}>
+                            <button
+                              onPointerDown={e => e.stopPropagation()}
+                              onClick={() => setAdvanced(a => ({ ...a, quiet: !a.quiet }))}
+                              style={{ padding:"6px 16px", border:"1.5px solid",
+                                borderColor: advanced.quiet ? "#1a73e8" : "#dadce0",
+                                borderRadius:20, background: advanced.quiet ? "#e8f0fe" : "white",
+                                color: advanced.quiet ? "#1a73e8" : "#5f6368",
+                                fontSize:12, fontWeight:600, cursor:"pointer",
+                                fontFamily:"'Google Sans',sans-serif" }}>
+                              🤫 Quiet vibe
+                            </button>
                           </div>
                         </div>
                       </motion.div>
