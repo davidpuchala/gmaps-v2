@@ -14,7 +14,7 @@ const MODES = [
 ];
 const SNAP_PEEK = 108;
 const SNAP_HALF = 0.52;
-const SNAP_FULL = 0.93;
+const SNAP_FULL = 0.72;
 
 // ══════════════════════════════════════════════════════════════════════════════
 // LOGIN
@@ -775,7 +775,7 @@ export default function App() {
       )}
 
       {/* ── Top bar ─────────────────────────────────────────────────────── */}
-      <div style={{ position:"absolute", top:0, left:0, right:0, zIndex:20,
+      <div style={{ position:"absolute", top:0, left:0, right:0, zIndex:40,
         padding:"12px 12px 0",
         background:"linear-gradient(to bottom,rgba(255,255,255,0.97) 70%,transparent)" }}>
 
