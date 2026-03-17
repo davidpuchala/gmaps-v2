@@ -92,7 +92,7 @@ function LoginScreen({ onLogin }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // RESTAURANT CARD
 // ══════════════════════════════════════════════════════════════════════════════
-function RestaurantCard({ r, onFeedback }) {
+function RestaurantCard({ r, onFeedback, isSelected }) {
   const [expanded, setExpanded] = useState(false);
   const [feedbackGiven, setFeedbackGiven] = useState(null);
   const price = "€".repeat(r.price_level || 2);
@@ -110,7 +110,10 @@ function RestaurantCard({ r, onFeedback }) {
     <motion.div layout initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }}
       transition={{ ease:[0.22,1,0.36,1] }}
       style={{ background:"white", borderRadius:18, marginBottom:12, overflow:"hidden",
-        boxShadow:"0 2px 10px rgba(0,0,0,0.09)" }}>
+        boxShadow: isSelected
+          ? "0 0 0 2.5px #1a73e8, 0 4px 20px rgba(26,115,232,0.22)"
+          : "0 2px 10px rgba(0,0,0,0.09)",
+        transition:"box-shadow 0.2s" }}>
 
       {/* Photo */}
       {r.photo_url && (
@@ -525,8 +528,12 @@ export default function App() {
   const [showAdvanced,   setShowAdvanced]   = useState(false);
 
   // ── UI state ───────────────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState("explore");
-  const [toastMsg,  setToastMsg]  = useState(null);
+  const [activeTab,   setActiveTab]   = useState("explore");
+  const [selectedRec, setSelectedRec] = useState(null);
+  const [hoveredRec,  setHoveredRec]  = useState(null);
+  const [toastMsg,    setToastMsg]    = useState(null);
+  const sheetContentRef = useRef(null);
+  const cardRefs        = useRef({});
   const [vh,        setVh]        = useState(812);   // SSR-safe viewport height
   const [sheetSnap, setSheetSnap] = useState("half");
   const dragStartY = useRef(null);
@@ -576,7 +583,20 @@ export default function App() {
     setLoggedIn(true);
     setRecs([]); setRestaurants([]); setHistory([]);
     setExcluded(new Set()); setCustomWeights(null); setPrefLabel(null);
+    setSelectedRec(null);
   };
+
+  // ── Scroll to card when marker is clicked ─────────────────────────────────
+  useEffect(() => {
+    if (!selectedRec) return;
+    setActiveTab("explore");
+    if (sheetSnap === "peek") setSheetSnap("half");
+    setTimeout(() => {
+      const el = cardRefs.current[selectedRec];
+      if (el && sheetContentRef.current) el.scrollIntoView({ behavior:"smooth", block:"nearest" });
+    }, 220);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedRec]);
   const handleLogout = () => {
     setLoggedIn(false); setUserEmail(null); setProfile(null);
   };
@@ -733,14 +753,17 @@ export default function App() {
             <Marker
               key={r.place_id || r.name}
               position={{ lat: r.lat, lng: r.lng }}
+              onClick={() => setSelectedRec(r.name)}
+              onMouseOver={() => setHoveredRec(r.name)}
+              onMouseOut={() => setHoveredRec(null)}
               label={{ text: String(i + 1), color: "#fff", fontWeight: "bold", fontSize: "13px" }}
               icon={{
                 path: "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z",
-                fillColor: "#1a73e8",
+                fillColor: selectedRec === r.name ? "#ea4335" : hoveredRec === r.name ? "#1558d6" : "#1a73e8",
                 fillOpacity: 1,
                 strokeColor: "#fff",
                 strokeWeight: 2,
-                scale: 2,
+                scale: (hoveredRec === r.name || selectedRec === r.name) ? 2.5 : 2,
                 anchor: new window.google.maps.Point(12, 22),
                 labelOrigin: new window.google.maps.Point(12, 9),
               }}
@@ -846,7 +869,7 @@ export default function App() {
         </div>
 
         {/* Scrollable tab content */}
-        <div style={{ flex:1, overflowY:"auto", WebkitOverflowScrolling:"touch" }}>
+        <div ref={sheetContentRef} style={{ flex:1, overflowY:"auto", WebkitOverflowScrolling:"touch" }}>
           <AnimatePresence mode="wait">
             {activeTab === "explore" && (
               <motion.div key="explore"
@@ -902,6 +925,7 @@ export default function App() {
                   <input type="range" min={500} max={5000} step={250} value={radius}
                     onChange={e => setRadius(Number(e.target.value))}
                     onPointerDown={e => e.stopPropagation()}
+                    onTouchStart={e => e.stopPropagation()}
                     style={{ width:"100%", accentColor:"#1a73e8", cursor:"pointer" }}/>
                 </div>
 
@@ -997,7 +1021,9 @@ export default function App() {
                         No restaurants found — try increasing the radius.
                       </div>
                     : recs.map(r => (
-                        <RestaurantCard key={r.name} r={r} onFeedback={handleFeedback}/>
+                        <div key={r.name} ref={el => { cardRefs.current[r.name] = el; }}>
+                          <RestaurantCard r={r} onFeedback={handleFeedback} isSelected={selectedRec === r.name}/>
+                        </div>
                       ))
                   }
 
