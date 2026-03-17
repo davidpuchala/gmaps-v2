@@ -551,6 +551,11 @@ export default function App() {
     setUserLatLng(PERSONA_COORDS[userEmail] || BARCELONA);
   }, [loggedIn, userEmail]);
 
+  // Pan map to user's location whenever it changes (profile switch or login)
+  useEffect(() => {
+    if (userLatLng && mapRef.current) mapRef.current.panTo(userLatLng);
+  }, [userLatLng]);
+
   // Measure real viewport height client-side only
   useEffect(() => {
     const update = () => setVh(window.innerHeight);
@@ -695,7 +700,7 @@ export default function App() {
       {mapsLoaded ? (
         <GoogleMap
           mapContainerStyle={{ position:"absolute", inset:0, width:"100%", height:"100%", filter:"saturate(0.85) brightness(0.97)" }}
-          center={BARCELONA}
+          defaultCenter={userLatLng || BARCELONA}
           zoom={15}
           onLoad={map => { mapRef.current = map; }}
           options={{
@@ -896,6 +901,7 @@ export default function App() {
                   </div>
                   <input type="range" min={500} max={5000} step={250} value={radius}
                     onChange={e => setRadius(Number(e.target.value))}
+                    onPointerDown={e => e.stopPropagation()}
                     style={{ width:"100%", accentColor:"#1a73e8", cursor:"pointer" }}/>
                 </div>
 
