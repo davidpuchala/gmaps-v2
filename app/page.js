@@ -546,11 +546,6 @@ export default function App() {
     "sofia@gmail.com": { lat: 41.4035, lng: 2.1536 },  // Gràcia
     "marc@gmail.com":  { lat: 41.3762, lng: 2.1921 },  // Barceloneta (central)
   };
-  useEffect(() => {
-    if (!loggedIn || !userEmail) return;
-    setUserLatLng(PERSONA_COORDS[userEmail] || BARCELONA);
-  }, [loggedIn, userEmail]);
-
   // Pan map to user's location whenever it changes (profile switch or login)
   useEffect(() => {
     if (userLatLng && mapRef.current) mapRef.current.panTo(userLatLng);
@@ -574,8 +569,10 @@ export default function App() {
 
   // ── Login / logout ─────────────────────────────────────────────────────────
   const handleLogin = (email) => {
+    const coords = PERSONA_COORDS[email] || BARCELONA;
     setUserEmail(email);
     setProfile(synthesizeProfile(MOCK_USERS[email]));
+    setUserLatLng(coords);
     setLoggedIn(true);
     setRecs([]); setRestaurants([]); setHistory([]);
     setExcluded(new Set()); setCustomWeights(null); setPrefLabel(null);
@@ -587,13 +584,16 @@ export default function App() {
   // ── Fetch restaurants when logged in, radius, or user location changes ────
   useEffect(() => {
     if (!loggedIn || !userLatLng) return;
+    const controller = new AbortController();
     setLoadingRecs(true);
-    fetch(`/api/places?radius=${radius}&lat=${userLatLng.lat}&lng=${userLatLng.lng}`)
+    setRestaurants([]);
+    fetch(`/api/places?radius=${radius}&lat=${userLatLng.lat}&lng=${userLatLng.lng}`, { signal: controller.signal })
       .then(r => r.json())
       .then(d => setRestaurants(d.results || []))
-      .catch(() => {})
+      .catch(err => { if (err.name !== "AbortError") console.error(err); })
       .finally(() => setLoadingRecs(false));
-  }, [loggedIn, radius, userLatLng]);
+    return () => controller.abort();
+  }, [loggedIn, radius, userLatLng, userEmail]);
 
   // ── Re-score whenever inputs change ───────────────────────────────────────
   useEffect(() => {
