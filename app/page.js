@@ -579,16 +579,16 @@ export default function App() {
     setLoggedIn(false); setUserEmail(null); setProfile(null);
   };
 
-  // ── Fetch restaurants when logged in or radius changes ────────────────────
+  // ── Fetch restaurants when logged in, radius, or user location changes ────
   useEffect(() => {
-    if (!loggedIn) return;
+    if (!loggedIn || !userLatLng) return;
     setLoadingRecs(true);
-    fetch(`/api/places?radius=${radius}`)
+    fetch(`/api/places?radius=${radius}&lat=${userLatLng.lat}&lng=${userLatLng.lng}`)
       .then(r => r.json())
       .then(d => setRestaurants(d.results || []))
       .catch(() => {})
       .finally(() => setLoadingRecs(false));
-  }, [loggedIn, radius]);
+  }, [loggedIn, radius, userLatLng]);
 
   // ── Re-score whenever inputs change ───────────────────────────────────────
   useEffect(() => {

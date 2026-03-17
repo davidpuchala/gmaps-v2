@@ -21,13 +21,15 @@ const FOOD = new Set(["restaurant","food","bar","cafe","bakery","meal_takeaway",
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const radius = parseInt(searchParams.get("radius") || "1500");
+  const lat    = parseFloat(searchParams.get("lat") || BARCELONA.lat);
+  const lng    = parseFloat(searchParams.get("lng") || BARCELONA.lng);
   const key    = process.env.GOOGLE_PLACES_API_KEY;
 
   if (!key) return Response.json({ error: "No GOOGLE_PLACES_API_KEY set", results: [] });
 
   try {
     // Nearby search
-    const nearbyUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${BARCELONA.lat},${BARCELONA.lng}&radius=${radius}&type=restaurant&key=${key}`;
+    const nearbyUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=restaurant&key=${key}`;
     const nearbyRes = await fetch(nearbyUrl);
     const nearbyData = await nearbyRes.json();
     const raw = nearbyData.results || [];
@@ -35,6 +37,8 @@ export async function GET(request) {
     // Enrich top 15 results (limit API calls)
     const enriched = [];
     for (const place of raw.slice(0, 40)) {
+      // Skip hotels/lodging that happen to have a restaurant on-site
+      if ((place.types || []).includes("lodging")) continue;
       const types = (place.types || []).filter(t => !NON_FOOD.has(t));
       if (!types.some(t => FOOD.has(t))) continue;
       if ((place.rating || 0) < 4.0 || (place.user_ratings_total || 0) < 50) continue;
@@ -52,7 +56,7 @@ export async function GET(request) {
       } catch {}
 
       const loc      = place.geometry?.location || {};
-      const distM    = haversine(BARCELONA.lat, BARCELONA.lng, loc.lat || BARCELONA.lat, loc.lng || BARCELONA.lng);
+      const distM    = haversine(lat, lng, loc.lat || lat, loc.lng || lng);
       const vicinity = place.vicinity || "Barcelona";
       const neighborhood = vicinity.includes(",") ? vicinity.split(",").at(-2)?.trim() : vicinity;
 
