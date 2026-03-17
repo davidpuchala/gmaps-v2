@@ -14,7 +14,7 @@ const MODES = [
 ];
 const SNAP_PEEK = 108;
 const SNAP_HALF = 0.52;
-const SNAP_FULL = 0.72;
+const SNAP_FULL = 0.78;
 
 // ══════════════════════════════════════════════════════════════════════════════
 // LOGIN
@@ -593,7 +593,8 @@ export default function App() {
     if (sheetSnap === "peek") setSheetSnap("half");
     setTimeout(() => {
       const el = cardRefs.current[selectedRec];
-      if (el && sheetContentRef.current) el.scrollIntoView({ behavior:"smooth", block:"nearest" });
+      if (el && sheetContentRef.current)
+        sheetContentRef.current.scrollTo({ top: el.offsetTop - 8, behavior:"smooth" });
     }, 220);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedRec]);
@@ -726,6 +727,7 @@ export default function App() {
           options={{
             disableDefaultUI: true,
             gestureHandling: "greedy",
+            backgroundColor: "#b3cde0",
             styles: [{ featureType:"poi", elementType:"labels", stylers:[{visibility:"off"}] }],
           }}
         >
