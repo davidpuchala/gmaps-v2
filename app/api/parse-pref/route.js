@@ -30,9 +30,23 @@ Return ONLY valid JSON (no markdown, no explanation):
     "open_now":  <true or false>,
     "dietary":   <"vegan"|"seafood"|null>
   },
+  "cuisine_override": <array of Google Places types matching the user's specific cuisine request, or null>,
   "summary_label": "<3-5 word vibe label, e.g. 'Quiet business lunch'>"
 }
-Rules: weights must sum to 1.0. Cheap→high price weight+price_max 1-2. Quality→high rating weight. Nearby→high distance weight. Quiet/calm/work→quiet=true.`;
+Rules:
+- weights must sum to 1.0
+- Cheap→high price weight+price_max 1-2. Quality→high rating weight. Nearby→high distance weight. Quiet/calm/work→quiet=true.
+- cuisine_override: ONLY set if user explicitly names a cuisine or food type. Map to Google Places types:
+  pizza/italian → ["italian_restaurant","pizza_restaurant"]
+  japanese/sushi/ramen → ["japanese_restaurant","sushi_restaurant","ramen_restaurant"]
+  brunch/breakfast/cafe → ["cafe","breakfast_restaurant"]
+  vegan/vegetarian/plant-based → ["vegan_restaurant","vegetarian_restaurant"]
+  seafood/fish → ["seafood_restaurant"]
+  spanish/tapas → ["spanish_restaurant","bar"]
+  steak/meat/grill → ["steak_house"]
+  mediterranean → ["mediterranean_restaurant"]
+  french → ["french_restaurant"]
+  Otherwise set cuisine_override to null.`;
 
     const resp = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -51,7 +65,7 @@ Rules: weights must sum to 1.0. Cheap→high price weight+price_max 1-2. Quality
       for (const k in w) w[k] = Math.round(w[k]/total*1000)/1000;
     }
 
-    return Response.json({ weights: w, filters: parsed.filters || {}, summary_label: parsed.summary_label });
+    return Response.json({ weights: w, filters: parsed.filters || {}, cuisine_override: parsed.cuisine_override || null, summary_label: parsed.summary_label });
   } catch {
     return Response.json(DEFAULT);
   }

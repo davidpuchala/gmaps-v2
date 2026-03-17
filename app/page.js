@@ -647,7 +647,7 @@ export default function App() {
       });
       const d = await res.json();
       setCustomWeights(d.weights);
-      setAdvanced(a => ({ ...a, ...d.filters }));
+      setAdvanced(a => ({ ...a, ...d.filters, cuisine_override: d.cuisine_override || null }));
       setPrefLabel(d.summary_label);
       setPrefInput("");
       showToast(`🎯 ${d.summary_label || "Preferences updated"}`);

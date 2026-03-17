@@ -16,7 +16,7 @@ const NON_FOOD = new Set(["lodging","hotel","spa","gym","clothing_store","store"
 const FOOD = new Set(["restaurant","food","bar","cafe","bakery","meal_takeaway",
   "japanese_restaurant","sushi_restaurant","spanish_restaurant","italian_restaurant",
   "french_restaurant","mediterranean_restaurant","seafood_restaurant","steak_house",
-  "vegan_restaurant","vegetarian_restaurant","fast_food_restaurant"]);
+  "vegan_restaurant","vegetarian_restaurant","fast_food_restaurant","breakfast_restaurant"]);
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -28,11 +28,21 @@ export async function GET(request) {
   if (!key) return Response.json({ error: "No GOOGLE_PLACES_API_KEY set", results: [] });
 
   try {
-    // Nearby search
-    const nearbyUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=restaurant&key=${key}`;
-    const nearbyRes = await fetch(nearbyUrl);
-    const nearbyData = await nearbyRes.json();
-    const raw = nearbyData.results || [];
+    // Fetch restaurants and cafes in parallel (cafes cover brunch/breakfast spots)
+    const base = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&key=${key}`;
+    const [nearbyRes, cafeRes] = await Promise.all([
+      fetch(`${base}&type=restaurant`),
+      fetch(`${base}&type=cafe`),
+    ]);
+    const [nearbyData, cafeData] = await Promise.all([nearbyRes.json(), cafeRes.json()]);
+
+    // Merge and deduplicate by place_id
+    const seen = new Set();
+    const raw = [...(nearbyData.results || []), ...(cafeData.results || [])].filter(p => {
+      if (seen.has(p.place_id)) return false;
+      seen.add(p.place_id);
+      return true;
+    });
 
     // Enrich top 15 results (limit API calls)
     const enriched = [];
