@@ -542,9 +542,9 @@ export default function App() {
 
   // Use persona's neighbourhood coords — no real geolocation needed in prototype
   const PERSONA_COORDS = {
-    "david@gmail.com": { lat: 41.3944, lng: 2.1614 },  // Eixample
+    "david@gmail.com": { lat: 41.3910, lng: 2.1655 },  // Eixample (central)
     "sofia@gmail.com": { lat: 41.4035, lng: 2.1536 },  // Gràcia
-    "marc@gmail.com":  { lat: 41.3770, lng: 2.1896 },  // Barceloneta
+    "marc@gmail.com":  { lat: 41.3762, lng: 2.1921 },  // Barceloneta (central)
   };
   useEffect(() => {
     if (!loggedIn || !userEmail) return;
@@ -911,12 +911,13 @@ export default function App() {
                       <motion.div initial={{ height:0, opacity:0 }}
                         animate={{ height:"auto", opacity:1 }}
                         exit={{ height:0, opacity:0 }} style={{ overflow:"hidden" }}>
-                        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10,
+                        <div onPointerDown={e => e.stopPropagation()}
+                          style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10,
                           paddingTop:10 }}>
                           <div>
                             <div style={{ fontSize:12, color:"#5f6368", marginBottom:4 }}>Max price</div>
                             <select defaultValue=""
-                              onChange={e => setAdvanced(a=>({...a, price_max: e.target.value ? Number(e.target.value):null}))}
+                              onChange={e => setAdvanced(a=>({...a, price_max: (e.target.value && e.target.value !== "4") ? Number(e.target.value) : null}))}
                               style={{ width:"100%", padding:"7px 10px", border:"1px solid #dadce0",
                                 borderRadius:10, fontSize:13, fontFamily:"'Google Sans',sans-serif" }}>
                               <option value="">Any</option>
