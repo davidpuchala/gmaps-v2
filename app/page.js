@@ -700,7 +700,7 @@ export default function App() {
       {mapsLoaded ? (
         <GoogleMap
           mapContainerStyle={{ position:"absolute", inset:0, width:"100%", height:"100%", filter:"saturate(0.85) brightness(0.97)" }}
-          defaultCenter={userLatLng || BARCELONA}
+          center={userLatLng || BARCELONA}
           zoom={15}
           onLoad={map => { mapRef.current = map; }}
           options={{
