@@ -544,6 +544,7 @@ export default function App() {
   const [prefLoading,    setPrefLoading]    = useState(false);
   const [showAdvanced,   setShowAdvanced]   = useState(false);
   const [noMatch,        setNoMatch]        = useState(false);
+  const [noMatchQuery,   setNoMatchQuery]   = useState(null);
   const [priceFilterMismatch, setPriceFilterMismatch] = useState(false);
 
   // ── UI state ───────────────────────────────────────────────────────────────
@@ -632,8 +633,8 @@ export default function App() {
     setActiveTab("explore");
     setSheetSnap("half");
     setRecs([]); setRestaurants([]); setHistory([]);
-    setExcluded(new Set()); setCustomWeights(null); setPrefLabel(null);
-    setNoMatch(false); setPriceFilterMismatch(false); setSelectedRec(null);
+    setExcluded(new Set()); setCustomWeights(null); setPrefLabel(null); setAdvanced({});
+    setNoMatch(false); setNoMatchQuery(null); setPriceFilterMismatch(false); setSelectedRec(null);
   };
 
   // ── Scroll to card when marker is clicked ─────────────────────────────────
@@ -800,6 +801,7 @@ export default function App() {
     setLoadingRecs(true);
     setRecs([]);
     setNoMatch(false);
+    setNoMatchQuery(null);
     setPriceFilterMismatch(false);
     const cuisineText = profile.topCuisines.slice(0, 3)
       .map(c => c.replace(/_restaurant$/, "").replace(/_/g, " ")).join(", ");
@@ -890,12 +892,13 @@ export default function App() {
         setRecs(filtered);
         setPrefLabel(d.summary);
         setNoMatch(false);
+        setNoMatchQuery(null);
         setPriceFilterMismatch(false);
         showToast(`🎯 ${d.summary || "Found your picks"}`);
       } else {
         agentModeRef.current = false;
         setNoMatch(true);
-        showToast("No matches found — try a wider radius");
+        setNoMatchQuery(text);
       }
     } catch { agentModeRef.current = false; }
     setLoadingRecs(false);
@@ -1191,7 +1194,7 @@ export default function App() {
                         onClick={() => { agentModeCtxRef.current = null;
                           prefTextRef.current = ""; agentPicksRef.current = [];
                           setPrefLabel(null); setCustomWeights(null); setAdvanced({});
-                          setNoMatch(false); setPriceFilterMismatch(false);
+                          setNoMatch(false); setNoMatchQuery(null); setPriceFilterMismatch(false);
                           triggerForYouAgent(); }}>✕</span>
                     </motion.div>
                   )}
@@ -1329,9 +1332,31 @@ export default function App() {
                         Finding your picks…
                       </div>
                     : noMatch
-                    ? <div style={{ textAlign:"center", padding:32, color:"#5f6368", fontSize:13 }}>
-                        Unable to find your picks — increase the radius or refine your search.
-                      </div>
+                    ? <motion.div initial={{ opacity:0, scale:0.97 }} animate={{ opacity:1, scale:1 }}
+                        style={{ margin:"20px 0", background:"white", borderRadius:18,
+                          boxShadow:"0 2px 16px rgba(0,0,0,0.10)", padding:"22px 20px", textAlign:"center" }}>
+                        <div style={{ fontSize:28, marginBottom:10 }}>🔍</div>
+                        {noMatchQuery
+                          ? <>
+                              <div style={{ fontSize:14, fontWeight:700, color:"#202124", marginBottom:6 }}>
+                                "{noMatchQuery.length > 40 ? noMatchQuery.slice(0,40) + "…" : noMatchQuery}" not found nearby
+                              </div>
+                              <div style={{ fontSize:13, color:"#5f6368", marginBottom:16, lineHeight:1.5 }}>
+                                No results in your current {radius}m search area. Expand it to find what you're looking for.
+                              </div>
+                            </>
+                          : <div style={{ fontSize:13, color:"#5f6368", marginBottom:16, lineHeight:1.5 }}>
+                              Nothing found nearby — try expanding the search area.
+                            </div>
+                        }
+                        <motion.button whileTap={{ scale:0.96 }}
+                          onClick={() => setRadius(r => Math.min(r + 1500, 5000))}
+                          style={{ padding:"10px 22px", background:"#1a73e8", color:"white",
+                            border:"none", borderRadius:20, fontSize:13, fontWeight:700,
+                            cursor:"pointer", fontFamily:"'Google Sans',sans-serif" }}>
+                          Expand search area (+1.5 km)
+                        </motion.button>
+                      </motion.div>
                     : recs.length === 0
                     ? <div style={{ textAlign:"center", padding:32, color:"#5f6368", fontSize:13 }}>
                         No restaurants found — try increasing the radius.
