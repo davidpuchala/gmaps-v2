@@ -717,9 +717,32 @@ export default function App() {
   }, [recs]);
 
   // ── Refresh picks ──────────────────────────────────────────────────────────
-  const handleRefresh = () => {
-    const names = recs.map(r => r.name);
-    setExcluded(ex => new Set([...ex, ...names]));
+  const handleRefresh = async () => {
+    if (!userLatLng || !profile) return;
+    const avoid = recs.map(r => r.name).join(", ");
+    agentModeRef.current = true;
+    setLoadingRecs(true);
+    setRecs([]);
+    try {
+      const res = await fetch("/api/agent", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          text: `Find 3 great restaurants I haven't seen yet. Avoid: ${avoid}`,
+          profile, lat: userLatLng?.lat, lng: userLatLng?.lng,
+          radius, existingRestaurants: restaurants,
+        }),
+      });
+      const d = await res.json();
+      if (d.picks?.length) {
+        agentPicksRef.current = d.picks;
+        setRecs(d.picks);
+        setNoMatch(false);
+      } else {
+        agentModeRef.current = false;
+        setNoMatch(true);
+      }
+    } catch { agentModeRef.current = false; }
+    setLoadingRecs(false);
   };
 
   // ── Natural language preference → real agent ──────────────────────────────
@@ -743,7 +766,6 @@ export default function App() {
         agentModeRef.current = true;
         agentPicksRef.current = d.picks;
         setRecs(d.picks);
-        if (d.allRestaurants?.length) setRestaurants(d.allRestaurants);
         setPrefLabel(d.summary);
         setNoMatch(false);
         showToast(`🎯 ${d.summary || "Found your picks"}`);
@@ -778,7 +800,6 @@ export default function App() {
       if (d.picks?.length) {
         agentPicksRef.current = d.picks;
         setRecs(d.picks);
-        if (d.allRestaurants?.length) setRestaurants(d.allRestaurants);
         setPrefLabel(modeKey === "trending" ? "Trending now" : "Hidden gems");
         setNoMatch(false);
       } else {
