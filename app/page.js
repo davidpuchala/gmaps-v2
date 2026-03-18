@@ -670,11 +670,13 @@ export default function App() {
       .then(d => {
         const results = d.results || [];
         setRestaurants(results);
-        // Re-run agent with fresh pool when radius changes in agent mode
-        if (agentModeCtxRef.current) {
-          triggerModeAgent(agentModeCtxRef.current, results);
+        const ctx = agentModeCtxRef.current;
+        if (ctx === "trending" || ctx === "hidden") {
+          triggerModeAgent(ctx, results);
         } else if (agentModeRef.current && prefTextRef.current) {
           runPrefAgent(prefTextRef.current, results);
+        } else {
+          triggerForYouAgent(results); // always use agent for For You
         }
       })
       .catch(err => { if (err.name !== "AbortError") console.error(err); })
@@ -788,6 +790,45 @@ export default function App() {
     return out;
   };
 
+  // ── For You agent — profile-driven, replaces engine for initial picks ──────
+  const triggerForYouAgent = async (existingOverride) => {
+    if (!userLatLng || !profile) return;
+    agentModeCtxRef.current = "foryou"; // prevents .finally() from killing loading early
+    agentModeRef.current = true;
+    setMode("all");
+    setLoadingRecs(true);
+    setRecs([]);
+    setNoMatch(false);
+    setPriceFilterMismatch(false);
+    const cuisineText = profile.topCuisines.slice(0, 3)
+      .map(c => c.replace(/_restaurant$/, "").replace(/_/g, " ")).join(", ");
+    try {
+      const res = await fetch("/api/agent", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          text: `Find the 3 best restaurants that genuinely match this user's cuisine preferences: ${cuisineText}. Prioritise places that truly fit their taste, not just any highly-rated nearby spot.`,
+          profile, lat: userLatLng?.lat, lng: userLatLng?.lng,
+          radius, existingRestaurants: existingOverride ?? restaurants, advanced,
+        }),
+      });
+      const d = await res.json();
+      if (d.picks?.length) {
+        const filtered = applyAgentFilters(d.picks);
+        agentPicksRef.current = filtered;
+        setRecs(filtered);
+        setPriceFilterMismatch(false);
+      } else {
+        // Fallback to engine if agent finds nothing
+        agentModeRef.current = false;
+        agentModeCtxRef.current = null;
+      }
+    } catch {
+      agentModeRef.current = false;
+      agentModeCtxRef.current = null;
+    }
+    setLoadingRecs(false);
+  };
+
   // ── Refresh picks ──────────────────────────────────────────────────────────
   const handleRefresh = async () => {
     if (!userLatLng || !profile) return;
@@ -796,12 +837,14 @@ export default function App() {
     setLoadingRecs(true);
     setRecs([]);
     try {
+      const cuisineText = profile.topCuisines.slice(0, 3)
+        .map(c => c.replace(/_restaurant$/, "").replace(/_/g, " ")).join(", ");
       const res = await fetch("/api/agent", {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
           text: prefTextRef.current
             ? `${prefTextRef.current}. Find 3 different options, avoid: ${avoid}`
-            : `Find 3 great restaurants I haven't seen yet. Avoid: ${avoid}`,
+            : `Find 3 more great restaurants matching this user's taste for ${cuisineText}. Avoid: ${avoid}`,
           profile, lat: userLatLng?.lat, lng: userLatLng?.lng,
           radius, existingRestaurants: restaurants, advanced,
         }),
@@ -905,12 +948,10 @@ export default function App() {
       setMode(key);
       triggerModeAgent(key);
     } else {
-      // "all" — hand control back to engine
-      agentModeRef.current = false;
-      agentModeCtxRef.current = null;
       agentPicksRef.current = [];
       prefTextRef.current = "";
-      setMode(key); // triggers re-score effect
+      setPrefLabel(null); setCustomWeights(null);
+      triggerForYouAgent(); // re-run profile-driven agent for For You
     }
   };
 
@@ -1146,11 +1187,11 @@ export default function App() {
                         borderRadius:20, padding:"5px 14px", fontSize:12, fontWeight:600 }}>
                       🎯 {prefLabel}
                       <span style={{ cursor:"pointer", opacity:0.6 }}
-                        onClick={() => { agentModeRef.current = false; agentModeCtxRef.current = null;
+                        onClick={() => { agentModeCtxRef.current = null;
                           prefTextRef.current = ""; agentPicksRef.current = [];
-                          setMode("all");
                           setPrefLabel(null); setCustomWeights(null); setAdvanced({});
-                          setNoMatch(false); setPriceFilterMismatch(false); }}>✕</span>
+                          setNoMatch(false); setPriceFilterMismatch(false);
+                          triggerForYouAgent(); }}>✕</span>
                     </motion.div>
                   )}
                 </div>
