@@ -130,8 +130,7 @@ Your goal: find the 3 best restaurants for the user's request.
       const textBlock = response.content.find(b => b.type === "text")?.text || "";
       try {
         const json = JSON.parse(textBlock.match(/\{[\s\S]*\}/)?.[0] || "{}");
-        const picks = (json.picks || []).map((name, i) => {
-          // Fuzzy-match pick names against all collected restaurants
+        const basePicks = (json.picks || []).map((name, i) => {
           const found = allRestaurants.find(r =>
             r.name === name ||
             r.name.toLowerCase().includes(name.toLowerCase()) ||
@@ -141,6 +140,24 @@ Your goal: find the 3 best restaurants for the user's request.
             ? { ...found, explanation: json.reasons?.[i] || null, matchPct: 95 - i * 3 }
             : null;
         }).filter(Boolean);
+
+        // Enrich picks with photo + open_now from Places Details
+        const gKey = process.env.GOOGLE_PLACES_API_KEY;
+        const picks = await Promise.all(basePicks.map(async r => {
+          if (!gKey || !r.place_id) return r;
+          try {
+            const det = await fetch(
+              `https://maps.googleapis.com/maps/api/place/details/json?place_id=${r.place_id}&fields=opening_hours,photos&key=${gKey}`
+            ).then(res => res.json());
+            const result   = det.result || {};
+            const photoRef = result.photos?.[0]?.photo_reference;
+            return {
+              ...r,
+              open_now:  result.opening_hours?.open_now ?? r.open_now,
+              photo_url: photoRef ? `/api/photo?ref=${encodeURIComponent(photoRef)}` : null,
+            };
+          } catch { return r; }
+        }));
 
         return Response.json({ picks, summary: json.summary, allRestaurants });
       } catch {

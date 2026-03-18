@@ -1026,28 +1026,6 @@ export default function App() {
                               })}
                             </div>
                           </div>
-                          {/* Open Now toggle */}
-                          <div>
-                            <div style={{ fontSize:12, color:"#5f6368", marginBottom:6 }}>Availability</div>
-                            <div style={{ display:"flex", gap:6 }}>
-                              {[["Any",false],["Open Now",true]].map(([label, val]) => {
-                                const active = (advanced.open_now || false) === val;
-                                return (
-                                  <button key={label}
-                                    onPointerDown={e => e.stopPropagation()}
-                                    onClick={() => setAdvanced(a => ({ ...a, open_now: val }))}
-                                    style={{ flex:1, padding:"6px 0", border:"1.5px solid",
-                                      borderColor: active ? "#1a73e8" : "#dadce0",
-                                      borderRadius:20, background: active ? "#e8f0fe" : "white",
-                                      color: active ? "#1a73e8" : "#5f6368",
-                                      fontSize:12, fontWeight:600, cursor:"pointer",
-                                      fontFamily:"'Google Sans',sans-serif" }}>
-                                    {label}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
                           {/* Vibe selector */}
                           <div>
                             <div style={{ fontSize:12, color:"#5f6368", marginBottom:6 }}>Vibe</div>
