@@ -716,6 +716,27 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recs]);
 
+  // ── Apply advanced filters to agent picks (mirrors engine hard filters) ───
+  const applyAgentFilters = (picks) => {
+    let out = picks;
+    if (advanced.price_max) {
+      const f = out.filter(r => (r.price_level || 2) <= advanced.price_max);
+      if (f.length) out = f;
+    }
+    if (advanced.open_now) {
+      const f = out.filter(r => r.open_now !== false);
+      if (f.length) out = f;
+    }
+    if (advanced.vibe === "quiet") {
+      const f = out.filter(r => (r.reviews_count || 0) < 400);
+      if (f.length) out = f;
+    } else if (advanced.vibe === "lively") {
+      const f = out.filter(r => (r.reviews_count || 0) >= 400);
+      if (f.length) out = f;
+    }
+    return out;
+  };
+
   // ── Refresh picks ──────────────────────────────────────────────────────────
   const handleRefresh = async () => {
     if (!userLatLng || !profile) return;
@@ -729,13 +750,14 @@ export default function App() {
         body: JSON.stringify({
           text: `Find 3 great restaurants I haven't seen yet. Avoid: ${avoid}`,
           profile, lat: userLatLng?.lat, lng: userLatLng?.lng,
-          radius, existingRestaurants: restaurants,
+          radius, existingRestaurants: restaurants, advanced,
         }),
       });
       const d = await res.json();
       if (d.picks?.length) {
-        agentPicksRef.current = d.picks;
-        setRecs(d.picks);
+        const filtered = applyAgentFilters(d.picks);
+        agentPicksRef.current = filtered;
+        setRecs(filtered);
         setNoMatch(false);
       } else {
         agentModeRef.current = false;
@@ -759,13 +781,15 @@ export default function App() {
           lng: userLatLng?.lng,
           radius,
           existingRestaurants: restaurants,
+          advanced,
         }),
       });
       const d = await res.json();
       if (d.picks?.length) {
         agentModeRef.current = true;
-        agentPicksRef.current = d.picks;
-        setRecs(d.picks);
+        const filtered = applyAgentFilters(d.picks);
+        agentPicksRef.current = filtered;
+        setRecs(filtered);
         setPrefLabel(d.summary);
         setNoMatch(false);
         showToast(`🎯 ${d.summary || "Found your picks"}`);
@@ -794,12 +818,13 @@ export default function App() {
       const res = await fetch("/api/agent", {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({ text, profile, lat: userLatLng?.lat, lng: userLatLng?.lng,
-          radius, existingRestaurants: existingOverride ?? restaurants, modeContext: modeKey }),
+          radius, existingRestaurants: existingOverride ?? restaurants, modeContext: modeKey, advanced }),
       });
       const d = await res.json();
       if (d.picks?.length) {
-        agentPicksRef.current = d.picks;
-        setRecs(d.picks);
+        const filtered = applyAgentFilters(d.picks);
+        agentPicksRef.current = filtered;
+        setRecs(filtered);
         setPrefLabel(modeKey === "trending" ? "Trending now" : "Hidden gems");
         setNoMatch(false);
       } else {

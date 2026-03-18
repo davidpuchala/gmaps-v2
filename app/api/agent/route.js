@@ -84,7 +84,7 @@ const TOOLS = [{
 
 // ── Main handler ──────────────────────────────────────────────────────────────
 export async function POST(request) {
-  const { text, profile, lat, lng, radius, existingRestaurants, modeContext } = await request.json();
+  const { text, profile, lat, lng, radius, existingRestaurants, modeContext, advanced } = await request.json();
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return Response.json({ picks: [], summary: null, allRestaurants: existingRestaurants || [] });
 
@@ -102,6 +102,10 @@ export async function POST(request) {
 
 User taste profile: loves ${profile?.topCuisines?.slice(0,3).join(", ") || "varied cuisine"}, preferred price ${"€".repeat(profile?.preferredPrice||2)} (${profile?.preferredPrice||2}/4).
 User location: ${lat}, ${lng}. Search radius: ${radius}m.${existingCtx}
+
+${advanced?.price_max ? `Hard constraint: only suggest restaurants with price level ≤ ${advanced.price_max} (1=€, 2=€€, 3=€€€, 4=€€€€).` : ""}
+${advanced?.vibe === "quiet" ? "Hard constraint: only suggest quiet, low-key places (few reviews, not crowded)." : advanced?.vibe === "lively" ? "Hard constraint: only suggest lively, buzzing places (many reviews, energetic atmosphere)." : ""}
+${advanced?.open_now ? "Hard constraint: only suggest places that are currently open." : ""}
 
 Your goal: find the 3 best restaurants for the user's request.
 - First check if the already-loaded restaurants satisfy the request. If yes, pick from them.
