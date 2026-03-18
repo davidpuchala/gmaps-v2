@@ -558,6 +558,7 @@ export default function App() {
   const agentModeRef  = useRef(false); // when true, agent owns recs — skip engine re-score
   const agentPicksRef    = useRef([]);   // full agent picks, used to restore after open_now filter
   const agentModeCtxRef  = useRef(null); // "trending" | "hidden" | null — set when mode chip triggers agent
+  const prefTextRef      = useRef("");   // last submitted preference text — used for radius re-trigger & refresh
 
   // ── Map state ──────────────────────────────────────────────────────────────
   const [userLatLng, setUserLatLng] = useState(null);
@@ -605,6 +606,7 @@ export default function App() {
     agentModeRef.current = false;
     agentModeCtxRef.current = null;
     agentPicksRef.current = [];
+    prefTextRef.current = "";
     setRecs([]); setRestaurants([]); setHistory([]);
     setExcluded(new Set()); setCustomWeights(null); setPrefLabel(null);
     setNoMatch(false); setSelectedRec(null);
@@ -645,13 +647,15 @@ export default function App() {
       .then(d => {
         const results = d.results || [];
         setRestaurants(results);
-        // Re-run mode agent with fresh pool when radius changes in trending/hidden mode
+        // Re-run agent with fresh pool when radius changes in agent mode
         if (agentModeCtxRef.current) {
           triggerModeAgent(agentModeCtxRef.current, results);
+        } else if (agentModeRef.current && prefTextRef.current) {
+          runPrefAgent(prefTextRef.current, results);
         }
       })
       .catch(err => { if (err.name !== "AbortError") console.error(err); })
-      .finally(() => { if (!agentModeCtxRef.current) setLoadingRecs(false); });
+      .finally(() => { if (!agentModeCtxRef.current && !prefTextRef.current) setLoadingRecs(false); });
     return () => controller.abort();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loggedIn, radius, userLatLng, userEmail, advanced.cuisine_override]);
@@ -748,7 +752,9 @@ export default function App() {
       const res = await fetch("/api/agent", {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
-          text: `Find 3 great restaurants I haven't seen yet. Avoid: ${avoid}`,
+          text: prefTextRef.current
+            ? `${prefTextRef.current}. Find 3 different options, avoid: ${avoid}`
+            : `Find 3 great restaurants I haven't seen yet. Avoid: ${avoid}`,
           profile, lat: userLatLng?.lat, lng: userLatLng?.lng,
           radius, existingRestaurants: restaurants, advanced,
         }),
@@ -768,25 +774,26 @@ export default function App() {
   };
 
   // ── Natural language preference → real agent ──────────────────────────────
-  const handlePrefSubmit = async () => {
-    if (!prefInput.trim() || prefLoading) return;
-    setPrefLoading(true);
+  const runPrefAgent = async (text, existingOverride) => {
+    agentModeRef.current = true;
+    setLoadingRecs(true);
+    setRecs([]);
+    setNoMatch(false);
     try {
       const res = await fetch("/api/agent", {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
-          text: prefInput,
+          text,
           profile,
           lat: userLatLng?.lat,
           lng: userLatLng?.lng,
           radius,
-          existingRestaurants: restaurants,
+          existingRestaurants: existingOverride ?? restaurants,
           advanced,
         }),
       });
       const d = await res.json();
       if (d.picks?.length) {
-        agentModeRef.current = true;
         const filtered = applyAgentFilters(d.picks);
         agentPicksRef.current = filtered;
         setRecs(filtered);
@@ -794,11 +801,20 @@ export default function App() {
         setNoMatch(false);
         showToast(`🎯 ${d.summary || "Found your picks"}`);
       } else {
+        agentModeRef.current = false;
         setNoMatch(true);
         showToast("No matches found — try a wider radius");
       }
-      setPrefInput("");
-    } catch {}
+    } catch { agentModeRef.current = false; }
+    setLoadingRecs(false);
+  };
+
+  const handlePrefSubmit = async () => {
+    if (!prefInput.trim() || prefLoading) return;
+    setPrefLoading(true);
+    prefTextRef.current = prefInput;
+    await runPrefAgent(prefInput);
+    setPrefInput("");
     setPrefLoading(false);
   };
 
@@ -844,6 +860,7 @@ export default function App() {
       agentModeRef.current = false;
       agentModeCtxRef.current = null;
       agentPicksRef.current = [];
+      prefTextRef.current = "";
       setMode(key); // triggers re-score effect
     }
   };
@@ -1082,8 +1099,9 @@ export default function App() {
                         borderRadius:20, padding:"5px 14px", fontSize:12, fontWeight:600 }}>
                       🎯 {prefLabel}
                       <span style={{ cursor:"pointer", opacity:0.6 }}
-                        onClick={() => { agentModeRef.current = false; setPrefLabel(null);
-                          setCustomWeights(null); setAdvanced({}); setNoMatch(false); }}>✕</span>
+                        onClick={() => { agentModeRef.current = false; agentModeCtxRef.current = null;
+                          prefTextRef.current = ""; agentPicksRef.current = [];
+                          setPrefLabel(null); setCustomWeights(null); setAdvanced({}); setNoMatch(false); }}>✕</span>
                     </motion.div>
                   )}
                 </div>
