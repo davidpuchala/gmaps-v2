@@ -713,12 +713,23 @@ export default function App() {
       if (f.length) out = f;
     }
     if (advanced.vibe === "quiet") {
-      const f = out.filter(r => (r.reviews_count || 0) < 400);
-      if (f.length) { out = f; setVibeFilterMismatch(false); }
+      // Score each pick on quietness: fewer reviews + lower price level = quieter
+      const scored = out.map(r => ({
+        ...r,
+        vibeScore: -(r.reviews_count || 0) - (r.price_level || 2) * 50,
+      })).sort((a, b) => b.vibeScore - a.vibeScore);
+      const quietest = scored.filter(r => (r.reviews_count || 0) < 600);
+      const f = quietest.length ? quietest : scored.slice(0, 1); // always at least 1
+      if (f.length < out.length) { out = f; setVibeFilterMismatch(false); }
       else { setVibeFilterMismatch(true); return; }
     } else if (advanced.vibe === "lively") {
-      const f = out.filter(r => (r.reviews_count || 0) >= 400);
-      if (f.length) { out = f; setVibeFilterMismatch(false); }
+      const scored = out.map(r => ({
+        ...r,
+        vibeScore: (r.reviews_count || 0) + (r.price_level || 2) * 50,
+      })).sort((a, b) => b.vibeScore - a.vibeScore);
+      const liveliest = scored.filter(r => (r.reviews_count || 0) >= 300);
+      const f = liveliest.length ? liveliest : scored.slice(0, 1);
+      if (f.length < out.length) { out = f; setVibeFilterMismatch(false); }
       else { setVibeFilterMismatch(true); return; }
     } else {
       setVibeFilterMismatch(false);

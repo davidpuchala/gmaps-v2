@@ -104,7 +104,11 @@ User taste profile: loves ${profile?.topCuisines?.slice(0,3).join(", ") || "vari
 User location: ${lat}, ${lng}. Search radius: ${radius}m.${existingCtx}
 
 ${advanced?.price_max ? `Hard constraint: budget per person ≤ ${advanced.price_max === 1 ? "~€20" : advanced.price_max === 2 ? "~€35" : "~€60"} (Google price level ≤ ${advanced.price_max}). IMPORTANT: Google price_level is only an approximation. Cross-reference your own knowledge of the restaurant's actual typical spend — if you know the place is more expensive than the budget allows, exclude it even if its price_level appears to fit.` : ""}
-${advanced?.vibe === "quiet" ? "Hard constraint: only suggest quiet, low-key places (few reviews, not crowded)." : advanced?.vibe === "lively" ? "Hard constraint: only suggest lively, buzzing places (many reviews, energetic atmosphere)." : ""}
+${advanced?.vibe === "quiet"
+  ? `Hard constraint: QUIET vibe only. Use all available signals to judge atmosphere — not just review count. Consider: side streets and hidden courtyards over main thoroughfares; neighbourhoods known for calm (Gràcia backstreets, Sant Pere, Born interiors) over busy tourist zones (Barceloneta seafront, Las Ramblas); establishment type (wine bars, trattorias, cafés, tasting-menu restaurants tend quieter than tapas bars, bodegas, beach bars); higher price level often correlates with more intimate atmosphere; low foot-traffic streets; places you know to be intimate or neighbourhood-oriented from your training data. Review count is one signal among many — a place with 300 reviews on a side street is likely quieter than one with 200 reviews on Passeig de Gràcia. Avoid anything known for queues, a buzzing scene, or high foot traffic.`
+  : advanced?.vibe === "lively"
+  ? `Hard constraint: LIVELY vibe only. Use all available signals: main streets, squares, and high foot-traffic areas; neighbourhoods with energy (El Born, Barceloneta, Eixample Esquerra bar scene, Gràcia plaças); establishment types that generate atmosphere (tapas bars, bodegas, rooftop terraces, social wine bars, busy brunch spots); places you know from training data to have a buzzing, social, or queue-worthy reputation in Barcelona; high review counts and a broad mix of visitor types. Avoid intimate, off-the-beaten-path, or tasting-menu-style spots that are deliberately quiet.`
+  : ""}
 ${advanced?.open_now ? "Hard constraint: only suggest places that are currently open." : ""}
 
 Your goal: find the 3 best restaurants for the user's request.
