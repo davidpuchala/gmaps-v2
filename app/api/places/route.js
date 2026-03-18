@@ -20,19 +20,21 @@ const FOOD = new Set(["restaurant","food","bar","cafe","bakery","meal_takeaway",
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
-  const radius = parseInt(searchParams.get("radius") || "1500");
-  const lat    = parseFloat(searchParams.get("lat") || BARCELONA.lat);
-  const lng    = parseFloat(searchParams.get("lng") || BARCELONA.lng);
-  const key    = process.env.GOOGLE_PLACES_API_KEY;
+  const radius  = parseInt(searchParams.get("radius") || "1500");
+  const lat     = parseFloat(searchParams.get("lat") || BARCELONA.lat);
+  const lng     = parseFloat(searchParams.get("lng") || BARCELONA.lng);
+  const keyword = searchParams.get("keyword") || "";
+  const key     = process.env.GOOGLE_PLACES_API_KEY;
 
   if (!key) return Response.json({ error: "No GOOGLE_PLACES_API_KEY set", results: [] });
 
   try {
     // Fetch restaurants and cafes in parallel (cafes cover brunch/breakfast spots)
     const base = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&key=${key}`;
+    const kwParam = keyword ? `&keyword=${encodeURIComponent(keyword)}` : "";
     const [nearbyRes, cafeRes] = await Promise.all([
-      fetch(`${base}&type=restaurant`),
-      fetch(`${base}&type=cafe`),
+      fetch(`${base}&type=restaurant${kwParam}`),
+      fetch(`${base}&type=cafe${kwParam}`),
     ]);
     const [nearbyData, cafeData] = await Promise.all([nearbyRes.json(), cafeRes.json()]);
 

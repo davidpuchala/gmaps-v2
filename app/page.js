@@ -16,6 +16,24 @@ const SNAP_PEEK = 108;
 const SNAP_HALF = 0.52;
 const SNAP_FULL = 0.80;
 
+// Maps cuisine_override types → Google Places keyword for nearbysearch
+const CUISINE_KEYWORD = {
+  italian_restaurant:       "italian pizza",
+  pizza_restaurant:         "pizza",
+  japanese_restaurant:      "japanese",
+  sushi_restaurant:         "sushi",
+  ramen_restaurant:         "ramen",
+  cafe:                     "cafe brunch",
+  breakfast_restaurant:     "breakfast brunch",
+  vegan_restaurant:         "vegan vegetarian",
+  vegetarian_restaurant:    "vegetarian",
+  seafood_restaurant:       "seafood fish mariscos",
+  spanish_restaurant:       "spanish tapas",
+  steak_house:              "steak grill carn",
+  mediterranean_restaurant: "mediterranean",
+  french_restaurant:        "french",
+};
+
 // ══════════════════════════════════════════════════════════════════════════════
 // LOGIN
 // ══════════════════════════════════════════════════════════════════════════════
@@ -603,19 +621,28 @@ export default function App() {
     setLoggedIn(false); setUserEmail(null); setProfile(null);
   };
 
-  // ── Fetch restaurants when logged in, radius, or user location changes ────
+  // ── Fetch restaurants when logged in, radius, location, or cuisine changes ──
   useEffect(() => {
     if (!loggedIn || !userLatLng) return;
     const controller = new AbortController();
     setLoadingRecs(true);
     setRestaurants([]);
-    fetch(`/api/places?radius=${radius}&lat=${userLatLng.lat}&lng=${userLatLng.lng}`, { signal: controller.signal })
+
+    // Derive keyword from cuisine_override so Google filters by cuisine
+    const override = advanced.cuisine_override;
+    const keyword = override?.length
+      ? [...new Set(override.map(t => CUISINE_KEYWORD[t]).filter(Boolean))].join(" ")
+      : "";
+
+    const url = `/api/places?radius=${radius}&lat=${userLatLng.lat}&lng=${userLatLng.lng}${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ""}`;
+    fetch(url, { signal: controller.signal })
       .then(r => r.json())
       .then(d => setRestaurants(d.results || []))
       .catch(err => { if (err.name !== "AbortError") console.error(err); })
       .finally(() => setLoadingRecs(false));
     return () => controller.abort();
-  }, [loggedIn, radius, userLatLng, userEmail]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loggedIn, radius, userLatLng, userEmail, advanced.cuisine_override]);
 
   // ── Re-score whenever inputs change ───────────────────────────────────────
   useEffect(() => {
