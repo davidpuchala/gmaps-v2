@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import { MOCK_USERS } from "../lib/users";
 import { synthesizeProfile, scoreRestaurants } from "../lib/engine";
 import { GoogleMap, useJsApiLoader, Marker, Circle } from "@react-google-maps/api";
@@ -14,7 +14,7 @@ const MODES = [
 ];
 const SNAP_PEEK = 108;
 const SNAP_HALF = 0.52;
-const SNAP_FULL = 0.78;
+const SNAP_FULL = 0.80;
 
 // ══════════════════════════════════════════════════════════════════════════════
 // LOGIN
@@ -536,7 +536,7 @@ export default function App() {
   const cardRefs        = useRef({});
   const [vh,        setVh]        = useState(812);   // SSR-safe viewport height
   const [sheetSnap, setSheetSnap] = useState("half");
-  const dragStartY = useRef(null);
+  const dragControls = useDragControls();
 
   // ── Map state ──────────────────────────────────────────────────────────────
   const [userLatLng, setUserLatLng] = useState(null);
@@ -590,7 +590,7 @@ export default function App() {
   useEffect(() => {
     if (!selectedRec) return;
     setActiveTab("explore");
-    if (sheetSnap === "peek") setSheetSnap("half");
+    setSheetSnap("full");
     setTimeout(() => {
       const el = cardRefs.current[selectedRec];
       if (el && sheetContentRef.current)
@@ -831,19 +831,23 @@ export default function App() {
       {/* ── Bottom sheet ────────────────────────────────────────────────── */}
       <motion.div
         drag="y"
+        dragControls={dragControls}
+        dragListener={false}
         dragConstraints={{ top: 0, bottom: 0 }}
         dragElastic={0.06}
         onDragEnd={handleDragEnd}
         animate={{ y: sheetY }}
         transition={{ type:"spring", stiffness:320, damping:32 }}
         style={{ position:"absolute", bottom: -(vh - SNAP_PEEK),
-          left:0, right:0, height: vh * SNAP_FULL + 20,
+          left:0, right:0, height: vh,
           background:"white", borderRadius:"22px 22px 0 0",
           boxShadow:"0 -6px 32px rgba(0,0,0,0.13)", zIndex:30,
           display:"flex", flexDirection:"column" }}
       >
-        {/* Drag handle */}
-        <div style={{ display:"flex", justifyContent:"center", padding:"12px 0 6px", flexShrink:0, cursor:"grab" }}>
+        {/* Drag handle — only this initiates the sheet drag */}
+        <div
+          onPointerDown={e => dragControls.start(e)}
+          style={{ display:"flex", justifyContent:"center", padding:"12px 0 6px", flexShrink:0, cursor:"grab" }}>
           <div style={{ width:38, height:4, borderRadius:2, background:"#dadce0" }}/>
         </div>
 
