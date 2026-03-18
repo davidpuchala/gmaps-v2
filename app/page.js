@@ -972,16 +972,16 @@ export default function App() {
                               })}
                             </div>
                           </div>
-                          {/* Dietary — pill buttons */}
+                          {/* Open Now toggle */}
                           <div>
-                            <div style={{ fontSize:12, color:"#5f6368", marginBottom:6 }}>Dietary</div>
+                            <div style={{ fontSize:12, color:"#5f6368", marginBottom:6 }}>Availability</div>
                             <div style={{ display:"flex", gap:6 }}>
-                              {[["None",null],["Vegan","vegan"],["Seafood","seafood"]].map(([label, val]) => {
-                                const active = (advanced.dietary || null) === val;
+                              {[["Any",false],["Open Now",true]].map(([label, val]) => {
+                                const active = (advanced.open_now || false) === val;
                                 return (
                                   <button key={label}
                                     onPointerDown={e => e.stopPropagation()}
-                                    onClick={() => setAdvanced(a => ({ ...a, dietary: val }))}
+                                    onClick={() => setAdvanced(a => ({ ...a, open_now: val }))}
                                     style={{ flex:1, padding:"6px 0", border:"1.5px solid",
                                       borderColor: active ? "#1a73e8" : "#dadce0",
                                       borderRadius:20, background: active ? "#e8f0fe" : "white",
@@ -994,19 +994,27 @@ export default function App() {
                               })}
                             </div>
                           </div>
-                          {/* Quiet vibe toggle */}
-                          <div style={{ display:"flex", gap:6 }}>
-                            <button
-                              onPointerDown={e => e.stopPropagation()}
-                              onClick={() => setAdvanced(a => ({ ...a, quiet: !a.quiet }))}
-                              style={{ padding:"6px 16px", border:"1.5px solid",
-                                borderColor: advanced.quiet ? "#1a73e8" : "#dadce0",
-                                borderRadius:20, background: advanced.quiet ? "#e8f0fe" : "white",
-                                color: advanced.quiet ? "#1a73e8" : "#5f6368",
-                                fontSize:12, fontWeight:600, cursor:"pointer",
-                                fontFamily:"'Google Sans',sans-serif" }}>
-                              🤫 Quiet vibe
-                            </button>
+                          {/* Vibe selector */}
+                          <div>
+                            <div style={{ fontSize:12, color:"#5f6368", marginBottom:6 }}>Vibe</div>
+                            <div style={{ display:"flex", gap:6 }}>
+                              {[["Quiet","quiet"],["Any",null],["Lively","lively"]].map(([label, val]) => {
+                                const active = (advanced.vibe || null) === val;
+                                return (
+                                  <button key={label}
+                                    onPointerDown={e => e.stopPropagation()}
+                                    onClick={() => setAdvanced(a => ({ ...a, vibe: val }))}
+                                    style={{ flex:1, padding:"6px 0", border:"1.5px solid",
+                                      borderColor: active ? "#1a73e8" : "#dadce0",
+                                      borderRadius:20, background: active ? "#e8f0fe" : "white",
+                                      color: active ? "#1a73e8" : "#5f6368",
+                                      fontSize:12, fontWeight:600, cursor:"pointer",
+                                      fontFamily:"'Google Sans',sans-serif" }}>
+                                    {label}
+                                  </button>
+                                );
+                              })}
+                            </div>
                           </div>
                         </div>
                       </motion.div>

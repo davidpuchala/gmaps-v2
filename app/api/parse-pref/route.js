@@ -26,16 +26,15 @@ Return ONLY valid JSON (no markdown, no explanation):
   },
   "filters": {
     "price_max": <1-4 or null>,
-    "quiet":     <true or false>,
     "open_now":  <true or false>,
-    "dietary":   <"vegan"|"seafood"|null>
+    "vibe":      <"quiet"|"lively"|null>
   },
   "cuisine_override": <array of Google Places types matching the user's specific cuisine request, or null>,
   "summary_label": "<3-5 word vibe label, e.g. 'Quiet business lunch'>"
 }
 Rules:
 - weights must sum to 1.0
-- Cheap→high price weight+price_max 1-2. Quality→high rating weight. Nearby→high distance weight. Quiet/calm/work→quiet=true.
+- Cheap→high price weight+price_max 1-2. Quality→high rating weight. Nearby→high distance weight. Quiet/calm/work→vibe="quiet". Buzzing/popular/lively→vibe="lively". open_now=true if user wants somewhere open right now.
 - cuisine_override: ONLY set if user explicitly names a cuisine or food type. Map to Google Places types:
   pizza/italian → ["italian_restaurant","pizza_restaurant"]
   japanese/sushi/ramen → ["japanese_restaurant","sushi_restaurant","ramen_restaurant"]
