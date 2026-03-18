@@ -84,7 +84,7 @@ const TOOLS = [{
 
 // ── Main handler ──────────────────────────────────────────────────────────────
 export async function POST(request) {
-  const { text, profile, lat, lng, radius, existingRestaurants } = await request.json();
+  const { text, profile, lat, lng, radius, existingRestaurants, modeContext } = await request.json();
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return Response.json({ picks: [], summary: null, allRestaurants: existingRestaurants || [] });
 
@@ -107,6 +107,11 @@ Your goal: find the 3 best restaurants for the user's request.
 - First check if the already-loaded restaurants satisfy the request. If yes, pick from them.
 - If not, use search_places to find better options. You may search up to 3 times with different keywords.
 - Consider rating, price, distance, and how well the place matches the request.
+${modeContext === "trending"
+  ? `- TRENDING MODE: prioritise places with the highest review counts (500+ reviews). These are buzzing, popular spots everyone is talking about. Search for "popular", "best", "trendy" restaurants. Avoid low-review-count places.`
+  : modeContext === "hidden"
+  ? `- HIDDEN GEM MODE: prioritise places with high rating (4.4+) but relatively few reviews (under 300). These are underrated local secrets not yet overrun by tourists. Avoid places with 500+ reviews. Search for "local", "authentic", "neighbourhood" restaurants.`
+  : ""}
 - Once you have identified the best 3, respond ONLY with this exact JSON (no markdown, no explanation):
 {"picks":["Exact Name 1","Exact Name 2","Exact Name 3"],"reasons":["why #1 fits","why #2 fits","why #3 fits"],"summary":"3-5 word label"}`;
 

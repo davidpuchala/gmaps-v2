@@ -557,6 +557,7 @@ export default function App() {
   const [sheetSnap, setSheetSnap] = useState("half");
   const dragControls  = useDragControls();
   const agentModeRef  = useRef(false); // when true, agent owns recs — skip engine re-score
+  const agentPicksRef = useRef([]);    // full agent picks, used to restore after open_now filter
 
   // ── Map state ──────────────────────────────────────────────────────────────
   const [userLatLng, setUserLatLng] = useState(null);
@@ -602,6 +603,7 @@ export default function App() {
     setUserLatLng(coords);
     setLoggedIn(true);
     agentModeRef.current = false;
+    agentPicksRef.current = [];
     setRecs([]); setRestaurants([]); setHistory([]);
     setExcluded(new Set()); setCustomWeights(null); setPrefLabel(null);
     setNoMatch(false); setSelectedRec(null);
@@ -721,6 +723,7 @@ export default function App() {
       const d = await res.json();
       if (d.picks?.length) {
         agentModeRef.current = true;
+        agentPicksRef.current = d.picks;
         setRecs(d.picks);
         if (d.allRestaurants?.length) setRestaurants(d.allRestaurants);
         setPrefLabel(d.summary);
@@ -733,6 +736,56 @@ export default function App() {
       setPrefInput("");
     } catch {}
     setPrefLoading(false);
+  };
+
+  // ── Mode chip handler ─────────────────────────────────────────────────────
+  const triggerModeAgent = async (modeKey) => {
+    if (!userLatLng || !profile) return;
+    // Lock agent mode immediately so re-score effect doesn't overwrite recs during loading
+    agentModeRef.current = true;
+    setLoadingRecs(true);
+    setRecs([]);
+    setNoMatch(false);
+    try {
+      const text = modeKey === "trending"
+        ? "Find the most popular and trending restaurants right now with lots of buzz and reviews"
+        : "Find hidden gem restaurants — high quality, underrated, not yet discovered by the masses";
+      const res = await fetch("/api/agent", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ text, profile, lat: userLatLng?.lat, lng: userLatLng?.lng,
+          radius, existingRestaurants: restaurants, modeContext: modeKey }),
+      });
+      const d = await res.json();
+      if (d.picks?.length) {
+        agentPicksRef.current = d.picks;
+        setRecs(d.picks);
+        if (d.allRestaurants?.length) setRestaurants(d.allRestaurants);
+        setPrefLabel(modeKey === "trending" ? "Trending now" : "Hidden gems");
+        setNoMatch(false);
+      } else {
+        agentModeRef.current = false;
+        setNoMatch(true);
+      }
+    } catch { agentModeRef.current = false; }
+    setLoadingRecs(false);
+  };
+
+  const handleModeChange = (key) => {
+    if (key === "trending" || key === "hidden") {
+      setMode(key);
+      triggerModeAgent(key);
+    } else if (key === "open") {
+      setMode(key);
+      // If agent owns recs, filter them by open_now; engine handles non-agent mode
+      if (agentModeRef.current && agentPicksRef.current.length) {
+        setRecs(agentPicksRef.current.filter(r => r.open_now !== false));
+      }
+    } else {
+      // "all" — hand control back to engine
+      agentModeRef.current = false;
+      agentPicksRef.current = [];
+      setMode(key); // triggers re-score effect
+    }
   };
 
   // ── Toast ──────────────────────────────────────────────────────────────────
@@ -866,7 +919,7 @@ export default function App() {
           scrollbarWidth:"none", paddingBottom:10 }}>
           {MODES.map(m => (
             <motion.button key={m.key} whileTap={{ scale:0.95 }}
-              onClick={() => setMode(m.key)}
+              onClick={() => handleModeChange(m.key)}
               style={{ padding:"7px 15px", borderRadius:20, border:"none",
                 fontSize:12, fontWeight:600, whiteSpace:"nowrap", cursor:"pointer",
                 fontFamily:"'Google Sans',sans-serif",
