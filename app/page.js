@@ -647,6 +647,16 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loggedIn, radius, userLatLng, userEmail, advanced.cuisine_override]);
 
+  // ── Apply open_now filter to agent picks when advanced filter changes ─────
+  useEffect(() => {
+    if (!agentModeRef.current || !agentPicksRef.current.length) return;
+    setRecs(advanced.open_now
+      ? agentPicksRef.current.filter(r => r.open_now !== false)
+      : agentPicksRef.current
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [advanced.open_now]);
+
   // ── Re-score whenever inputs change ───────────────────────────────────────
   useEffect(() => {
     if (agentModeRef.current) return; // agent owns recs — don't overwrite
