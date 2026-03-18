@@ -580,6 +580,26 @@ export default function App() {
     if (userLatLng && mapRef.current) mapRef.current.panTo(userLatLng);
   }, [userLatLng]);
 
+  // Fit map so user dot + all 3 pick markers are visible above the half-state panel
+  useEffect(() => {
+    if (!mapRef.current || !userLatLng || !recs.length || !window.google) return;
+    const bounds = new window.google.maps.LatLngBounds();
+    bounds.extend(userLatLng);
+    recs.forEach(r => { if (r.lat && r.lng) bounds.extend({ lat: r.lat, lng: r.lng }); });
+    // Bottom padding = panel height at half state so markers land above the sheet
+    mapRef.current.fitBounds(bounds, {
+      top: 80,   // clears search bar + mode chips
+      right: 50,
+      bottom: Math.round(vh * SNAP_HALF) + 30,
+      left: 50,
+    });
+    // Cap zoom so nearby clusters don't over-zoom
+    const idle = mapRef.current.addListener("idle", () => {
+      if (mapRef.current.getZoom() > 16) mapRef.current.setZoom(16);
+      window.google.maps.event.removeListener(idle);
+    });
+  }, [recs, userLatLng, vh]);
+
   // Measure real viewport height client-side only
   useEffect(() => {
     const update = () => setVh(window.innerHeight);
