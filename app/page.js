@@ -556,7 +556,8 @@ export default function App() {
   const [sheetSnap, setSheetSnap] = useState("half");
   const dragControls  = useDragControls();
   const agentModeRef  = useRef(false); // when true, agent owns recs — skip engine re-score
-  const agentPicksRef = useRef([]);    // full agent picks, used to restore after open_now filter
+  const agentPicksRef    = useRef([]);   // full agent picks, used to restore after open_now filter
+  const agentModeCtxRef  = useRef(null); // "trending" | "hidden" | null — set when mode chip triggers agent
 
   // ── Map state ──────────────────────────────────────────────────────────────
   const [userLatLng, setUserLatLng] = useState(null);
@@ -602,6 +603,7 @@ export default function App() {
     setUserLatLng(coords);
     setLoggedIn(true);
     agentModeRef.current = false;
+    agentModeCtxRef.current = null;
     agentPicksRef.current = [];
     setRecs([]); setRestaurants([]); setHistory([]);
     setExcluded(new Set()); setCustomWeights(null); setPrefLabel(null);
@@ -640,9 +642,16 @@ export default function App() {
     const url = `/api/places?radius=${radius}&lat=${userLatLng.lat}&lng=${userLatLng.lng}${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ""}`;
     fetch(url, { signal: controller.signal })
       .then(r => r.json())
-      .then(d => setRestaurants(d.results || []))
+      .then(d => {
+        const results = d.results || [];
+        setRestaurants(results);
+        // Re-run mode agent with fresh pool when radius changes in trending/hidden mode
+        if (agentModeCtxRef.current) {
+          triggerModeAgent(agentModeCtxRef.current, results);
+        }
+      })
       .catch(err => { if (err.name !== "AbortError") console.error(err); })
-      .finally(() => setLoadingRecs(false));
+      .finally(() => { if (!agentModeCtxRef.current) setLoadingRecs(false); });
     return () => controller.abort();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loggedIn, radius, userLatLng, userEmail, advanced.cuisine_override]);
@@ -748,8 +757,9 @@ export default function App() {
   };
 
   // ── Mode chip handler ─────────────────────────────────────────────────────
-  const triggerModeAgent = async (modeKey) => {
+  const triggerModeAgent = async (modeKey, existingOverride) => {
     if (!userLatLng || !profile) return;
+    agentModeCtxRef.current = modeKey;
     // Lock agent mode immediately so re-score effect doesn't overwrite recs during loading
     agentModeRef.current = true;
     setLoadingRecs(true);
@@ -762,7 +772,7 @@ export default function App() {
       const res = await fetch("/api/agent", {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({ text, profile, lat: userLatLng?.lat, lng: userLatLng?.lng,
-          radius, existingRestaurants: restaurants, modeContext: modeKey }),
+          radius, existingRestaurants: existingOverride ?? restaurants, modeContext: modeKey }),
       });
       const d = await res.json();
       if (d.picks?.length) {
@@ -786,6 +796,7 @@ export default function App() {
     } else {
       // "all" — hand control back to engine
       agentModeRef.current = false;
+      agentModeCtxRef.current = null;
       agentPicksRef.current = [];
       setMode(key); // triggers re-score effect
     }
