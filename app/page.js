@@ -847,10 +847,22 @@ export default function App() {
         // Fallback to engine if agent finds nothing
         agentModeRef.current = false;
         agentModeCtxRef.current = null;
+        // Ref mutation won't trigger re-score effect — compute directly
+        const pool = existingOverride ?? restaurants;
+        if (pool.length && profile) {
+          const scored = scoreRestaurants(pool, profile, { advanced, weights: customWeights });
+          setRecs(scored.slice(0, 3));
+        }
       }
     } catch {
       agentModeRef.current = false;
       agentModeCtxRef.current = null;
+      // Same fallback for catch path
+      const pool = existingOverride ?? restaurants;
+      if (pool.length && profile) {
+        const scored = scoreRestaurants(pool, profile, { advanced, weights: customWeights });
+        setRecs(scored.slice(0, 3));
+      }
     }
     setLoadingRecs(false);
   };
@@ -1147,11 +1159,19 @@ export default function App() {
           boxShadow:"0 -6px 32px rgba(0,0,0,0.13)", zIndex:30,
           display:"flex", flexDirection:"column" }}
       >
-        {/* Drag handle — only this initiates the sheet drag */}
+        {/* Drag handle — tap to cycle snaps, drag to freeform */}
         <div
           onPointerDown={e => dragControls.start(e)}
-          style={{ display:"flex", justifyContent:"center", padding:"12px 0 6px", flexShrink:0, cursor:"grab" }}>
-          <div style={{ width:38, height:4, borderRadius:2, background:"#dadce0" }}/>
+          onClick={() => {
+            if (sheetSnap === "peek") setSheetSnap("half");
+            else if (sheetSnap === "half") setSheetSnap("full");
+            else setSheetSnap("half");
+          }}
+          style={{ display:"flex", flexDirection:"column", alignItems:"center", padding:"10px 0 4px", flexShrink:0, cursor:"pointer", userSelect:"none" }}>
+          <div style={{ width:38, height:4, borderRadius:2, background:"#dadce0", marginBottom:4 }}/>
+          <div style={{ fontSize:14, color:"#bdc1c6", lineHeight:1 }}>
+            {sheetSnap === "full" ? "▾" : "▴"}
+          </div>
         </div>
 
         {/* Tab bar */}
