@@ -103,7 +103,7 @@ export async function POST(request) {
 User taste profile: loves ${profile?.topCuisines?.slice(0,3).join(", ") || "varied cuisine"}, preferred price ${"€".repeat(profile?.preferredPrice||2)} (${profile?.preferredPrice||2}/4).
 User location: ${lat}, ${lng}. Search radius: ${radius}m.${existingCtx}
 
-${advanced?.price_max ? `Hard constraint: only suggest restaurants with price level ≤ ${advanced.price_max} (1=€, 2=€€, 3=€€€, 4=€€€€).` : ""}
+${advanced?.price_max ? `Hard constraint: only suggest restaurants within budget — price level ≤ ${advanced.price_max} (approx. ${advanced.price_max === 1 ? "under €20" : advanced.price_max === 2 ? "€20–35" : "€35–60"} per person).` : ""}
 ${advanced?.vibe === "quiet" ? "Hard constraint: only suggest quiet, low-key places (few reviews, not crowded)." : advanced?.vibe === "lively" ? "Hard constraint: only suggest lively, buzzing places (many reviews, energetic atmosphere)." : ""}
 ${advanced?.open_now ? "Hard constraint: only suggest places that are currently open." : ""}
 

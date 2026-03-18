@@ -1224,11 +1224,11 @@ export default function App() {
                         animate={{ height:"auto", opacity:1 }}
                         exit={{ height:0, opacity:0 }} style={{ overflow:"hidden" }}>
                         <div style={{ paddingTop:10, display:"flex", flexDirection:"column", gap:10 }}>
-                          {/* Max price — pill buttons (avoids native select/picker) */}
+                          {/* Budget filter — euro ranges mapped to price levels */}
                           <div>
-                            <div style={{ fontSize:12, color:"#5f6368", marginBottom:6 }}>Max price</div>
+                            <div style={{ fontSize:12, color:"#5f6368", marginBottom:6 }}>Budget per person</div>
                             <div style={{ display:"flex", gap:6 }}>
-                              {[["Any",null],["€",1],["€€",2],["€€€",3],["€€€€",null]].map(([label, val]) => {
+                              {[["Any",null],["< €20",1],["€20–35",2],["€35–60",3]].map(([label, val]) => {
                                 const active = val === null
                                   ? !advanced.price_max
                                   : advanced.price_max === val;
@@ -1308,7 +1308,7 @@ export default function App() {
                       style={{ background:"#fef7e0", border:"1.5px solid #fbbc04",
                         borderRadius:14, padding:"14px 16px", marginBottom:14 }}>
                       <div style={{ fontSize:13, color:"#3c4043", marginBottom:10, lineHeight:1.5 }}>
-                        Current picks don't meet your chosen price level. Search for new picks that do?
+                        Current picks exceed your {advanced.price_max === 1 ? "< €20" : advanced.price_max === 2 ? "€20–35" : "€35–60"} budget. Search for new picks that fit?
                       </div>
                       <motion.button whileTap={{ scale:0.96 }}
                         onClick={() => {
