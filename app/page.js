@@ -544,6 +544,7 @@ export default function App() {
   const [prefLoading,    setPrefLoading]    = useState(false);
   const [showAdvanced,   setShowAdvanced]   = useState(false);
   const [noMatch,        setNoMatch]        = useState(false);
+  const [priceFilterMismatch, setPriceFilterMismatch] = useState(false);
 
   // ── UI state ───────────────────────────────────────────────────────────────
   const [activeTab,   setActiveTab]   = useState("explore");
@@ -684,10 +685,21 @@ export default function App() {
   useEffect(() => {
     if (!agentModeRef.current || !agentPicksRef.current.length) return;
     let out = agentPicksRef.current;
+
+    // Price filter — detect mismatch instead of silently ignoring
     if (advanced.price_max) {
       const f = out.filter(r => (r.price_level || 2) <= advanced.price_max);
-      if (f.length) out = f;
+      if (f.length) {
+        out = f;
+        setPriceFilterMismatch(false);
+      } else {
+        setPriceFilterMismatch(true);
+        return; // keep current recs, show mismatch message instead
+      }
+    } else {
+      setPriceFilterMismatch(false);
     }
+
     if (advanced.open_now) {
       const f = out.filter(r => r.open_now !== false);
       if (f.length) out = f;
@@ -832,6 +844,7 @@ export default function App() {
         setRecs(filtered);
         setPrefLabel(d.summary);
         setNoMatch(false);
+        setPriceFilterMismatch(false);
         showToast(`🎯 ${d.summary || "Found your picks"}`);
       } else {
         agentModeRef.current = false;
@@ -876,6 +889,7 @@ export default function App() {
         setRecs(filtered);
         setPrefLabel(modeKey === "trending" ? "Trending now" : "Hidden gems");
         setNoMatch(false);
+        setPriceFilterMismatch(false);
       } else {
         agentModeRef.current = false;
         setNoMatch(true);
@@ -1093,11 +1107,9 @@ export default function App() {
 
         {/* Scrollable tab content */}
         <div ref={sheetContentRef} style={{ flex:1, minHeight:0, overflowY:"auto", WebkitOverflowScrolling:"touch" }}>
-          <AnimatePresence>
             {activeTab === "explore" && (
               <motion.div key="explore"
-                initial={{ opacity:0, x:10 }} animate={{ opacity:1, x:0 }}
-                exit={{ opacity:0, x:-10 }} transition={{ duration:0.18 }}>
+                initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ duration:0.15 }}>
 
                 {/* Pref input */}
                 <div style={{ padding:"14px 14px 4px" }}>
@@ -1135,7 +1147,8 @@ export default function App() {
                         onClick={() => { agentModeRef.current = false; agentModeCtxRef.current = null;
                           prefTextRef.current = ""; agentPicksRef.current = [];
                           setMode("all");
-                          setPrefLabel(null); setCustomWeights(null); setAdvanced({}); setNoMatch(false); }}>✕</span>
+                          setPrefLabel(null); setCustomWeights(null); setAdvanced({});
+                          setNoMatch(false); setPriceFilterMismatch(false); }}>✕</span>
                     </motion.div>
                   )}
                 </div>
@@ -1245,6 +1258,28 @@ export default function App() {
 
                 {/* Cards */}
                 <div style={{ padding:"12px 14px 180px" }}>
+                  {/* Price filter mismatch banner — shown above cards */}
+                  {priceFilterMismatch && (
+                    <motion.div initial={{ opacity:0, y:-6 }} animate={{ opacity:1, y:0 }}
+                      style={{ background:"#fef7e0", border:"1.5px solid #fbbc04",
+                        borderRadius:14, padding:"14px 16px", marginBottom:14 }}>
+                      <div style={{ fontSize:13, color:"#3c4043", marginBottom:10, lineHeight:1.5 }}>
+                        Current picks don't meet your chosen price level. Search for new picks that do?
+                      </div>
+                      <motion.button whileTap={{ scale:0.96 }}
+                        onClick={() => {
+                          setPriceFilterMismatch(false);
+                          if (agentModeCtxRef.current) triggerModeAgent(agentModeCtxRef.current);
+                          else if (prefTextRef.current) runPrefAgent(prefTextRef.current);
+                        }}
+                        style={{ padding:"8px 18px", background:"#e37400", color:"white",
+                          border:"none", borderRadius:20, fontSize:13, fontWeight:700,
+                          cursor:"pointer", fontFamily:"'Google Sans',sans-serif" }}>
+                        Search now →
+                      </motion.button>
+                    </motion.div>
+                  )}
+
                   {loadingRecs
                     ? <div style={{ textAlign:"center", padding:32, color:"#5f6368", fontSize:13 }}>
                         Finding your picks…
@@ -1279,21 +1314,18 @@ export default function App() {
 
             {activeTab === "you" && (
               <motion.div key="you"
-                initial={{ opacity:0, x:10 }} animate={{ opacity:1, x:0 }}
-                exit={{ opacity:0, x:-10 }} transition={{ duration:0.18 }}>
+                initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ duration:0.15 }}>
                 <YouTab user={user} profile={profile} history={history}/>
               </motion.div>
             )}
 
             {activeTab === "pipeline" && (
               <motion.div key="pipeline"
-                initial={{ opacity:0, x:10 }} animate={{ opacity:1, x:0 }}
-                exit={{ opacity:0, x:-10 }} transition={{ duration:0.18 }}>
+                initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ duration:0.15 }}>
                 <PipelineTab user={user} profile={profile}
                   weights={customWeights} prefLabel={prefLabel}/>
               </motion.div>
             )}
-          </AnimatePresence>
         </div>
       </motion.div>
 
