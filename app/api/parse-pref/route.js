@@ -1,41 +1,67 @@
 // app/api/parse-pref/route.js
-// NON-STRAIGHTFORWARD LLM #2: free-text mood → structured JSON weights + filters
-// Tools pattern: LLM output directly feeds downstream scoring algorithm
+// Anthropic tool-use pattern: forces structured output via tool schema — no JSON parsing errors
 
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 
 const DEFAULT = { weights: { cuisine:0.40, rating:0.30, price:0.20, distance:0.10 }, filters: {}, summary_label: null };
 
+const extractTool = {
+  name: "extract_preferences",
+  description: "Extract structured dining preferences from user input",
+  input_schema: {
+    type: "object",
+    properties: {
+      weights: {
+        type: "object",
+        properties: {
+          cuisine:  { type: "number" },
+          rating:   { type: "number" },
+          price:    { type: "number" },
+          distance: { type: "number" },
+        },
+        required: ["cuisine","rating","price","distance"],
+      },
+      filters: {
+        type: "object",
+        properties: {
+          price_max: { type: ["integer","null"] },
+          open_now:  { type: "boolean" },
+          vibe:      { type: ["string","null"], enum: ["quiet","lively",null] },
+        },
+      },
+      cuisine_override: {
+        type: ["array","null"],
+        items: { type: "string" },
+      },
+      summary_label: { type: "string" },
+    },
+    required: ["weights","filters","summary_label"],
+  },
+};
+
 export async function POST(request) {
   const { text } = await request.json();
-  const key = process.env.OPENAI_API_KEY;
+  const key = process.env.ANTHROPIC_API_KEY;
   if (!key || !text?.trim()) return Response.json(DEFAULT);
 
   try {
-    const openai = new OpenAI({ apiKey: key });
-    const prompt = `You are a preference extraction engine for a restaurant recommendation system.
-The user said: "${text}"
+    const client = new Anthropic({ apiKey: key });
 
-Return ONLY valid JSON (no markdown, no explanation):
-{
-  "weights": {
-    "cuisine": <float 0.0-0.6>,
-    "rating":  <float 0.0-0.6>,
-    "price":   <float 0.0-0.4>,
-    "distance":<float 0.0-0.3>
-  },
-  "filters": {
-    "price_max": <1-4 or null>,
-    "open_now":  <true or false>,
-    "vibe":      <"quiet"|"lively"|null>
-  },
-  "cuisine_override": <array of Google Places types matching the user's specific cuisine request, or null>,
-  "summary_label": "<3-5 word vibe label, e.g. 'Quiet business lunch'>"
-}
+    const msg = await client.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 300,
+      tools: [extractTool],
+      tool_choice: { type: "any" },
+      messages: [{
+        role: "user",
+        content: `Extract dining preferences from: "${text}"
+
 Rules:
 - weights must sum to 1.0
-- Cheap→high price weight+price_max 1-2. Quality→high rating weight. Nearby→high distance weight. Quiet/calm/work→vibe="quiet". Buzzing/popular/lively→vibe="lively". open_now=true if user wants somewhere open right now.
-- cuisine_override: ONLY set if user explicitly names a cuisine or food type. Map to Google Places types:
+- Cheap → high price weight + price_max 1-2. Quality → high rating weight. Nearby → high distance weight.
+- vibe="quiet" for calm/work/relaxed. vibe="lively" for buzzing/popular/energetic. Otherwise vibe=null.
+- open_now=true only if user explicitly wants somewhere open right now.
+- cuisine_override: ONLY set if user names a specific cuisine. Map to Google Places types:
   pizza/italian → ["italian_restaurant","pizza_restaurant"]
   japanese/sushi/ramen → ["japanese_restaurant","sushi_restaurant","ramen_restaurant"]
   brunch/breakfast/cafe → ["cafe","breakfast_restaurant"]
@@ -45,26 +71,21 @@ Rules:
   steak/meat/grill → ["steak_house"]
   mediterranean → ["mediterranean_restaurant"]
   french → ["french_restaurant"]
-  Otherwise set cuisine_override to null.`;
-
-    const resp = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-      max_tokens: 200,
-      temperature: 0.2,
+  Otherwise cuisine_override=null.`,
+      }],
     });
 
-    let raw = resp.choices[0].message.content.trim().replace(/```json|```/g,"").trim();
-    const parsed = JSON.parse(raw);
+    const toolUse = msg.content.find(b => b.type === "tool_use");
+    if (!toolUse) return Response.json(DEFAULT);
+
+    const { weights, filters, cuisine_override, summary_label } = toolUse.input;
 
     // Normalise weights to sum exactly 1.0
-    const w = parsed.weights || {};
-    const total = Object.values(w).reduce((a,b)=>a+b, 0);
-    if (Math.abs(total - 1.0) > 0.05) {
-      for (const k in w) w[k] = Math.round(w[k]/total*1000)/1000;
-    }
+    const total = Object.values(weights).reduce((a,b) => a+b, 0);
+    if (Math.abs(total - 1.0) > 0.05)
+      for (const k in weights) weights[k] = Math.round(weights[k]/total*1000)/1000;
 
-    return Response.json({ weights: w, filters: parsed.filters || {}, cuisine_override: parsed.cuisine_override || null, summary_label: parsed.summary_label });
+    return Response.json({ weights, filters: filters || {}, cuisine_override: cuisine_override || null, summary_label });
   } catch {
     return Response.json(DEFAULT);
   }
