@@ -680,15 +680,28 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loggedIn, radius, userLatLng, userEmail, advanced.cuisine_override]);
 
-  // ── Apply open_now filter to agent picks when advanced filter changes ─────
+  // ── Re-apply all advanced filters to agent picks when any filter changes ──
   useEffect(() => {
     if (!agentModeRef.current || !agentPicksRef.current.length) return;
-    setRecs(advanced.open_now
-      ? agentPicksRef.current.filter(r => r.open_now !== false)
-      : agentPicksRef.current
-    );
+    let out = agentPicksRef.current;
+    if (advanced.price_max) {
+      const f = out.filter(r => (r.price_level || 2) <= advanced.price_max);
+      if (f.length) out = f;
+    }
+    if (advanced.open_now) {
+      const f = out.filter(r => r.open_now !== false);
+      if (f.length) out = f;
+    }
+    if (advanced.vibe === "quiet") {
+      const f = out.filter(r => (r.reviews_count || 0) < 400);
+      if (f.length) out = f;
+    } else if (advanced.vibe === "lively") {
+      const f = out.filter(r => (r.reviews_count || 0) >= 400);
+      if (f.length) out = f;
+    }
+    setRecs(out);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [advanced.open_now]);
+  }, [advanced.price_max, advanced.vibe, advanced.open_now]);
 
   // ── Re-score whenever inputs change ───────────────────────────────────────
   useEffect(() => {
@@ -1080,7 +1093,7 @@ export default function App() {
 
         {/* Scrollable tab content */}
         <div ref={sheetContentRef} style={{ flex:1, minHeight:0, overflowY:"auto", WebkitOverflowScrolling:"touch" }}>
-          <AnimatePresence mode="wait">
+          <AnimatePresence>
             {activeTab === "explore" && (
               <motion.div key="explore"
                 initial={{ opacity:0, x:10 }} animate={{ opacity:1, x:0 }}
@@ -1121,6 +1134,7 @@ export default function App() {
                       <span style={{ cursor:"pointer", opacity:0.6 }}
                         onClick={() => { agentModeRef.current = false; agentModeCtxRef.current = null;
                           prefTextRef.current = ""; agentPicksRef.current = [];
+                          setMode("all");
                           setPrefLabel(null); setCustomWeights(null); setAdvanced({}); setNoMatch(false); }}>✕</span>
                     </motion.div>
                   )}
