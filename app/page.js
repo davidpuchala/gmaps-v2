@@ -546,6 +546,7 @@ export default function App() {
   const [noMatch,        setNoMatch]        = useState(false);
   const [noMatchQuery,   setNoMatchQuery]   = useState(null);
   const [priceFilterMismatch, setPriceFilterMismatch] = useState(false);
+  const [vibeFilterMismatch,  setVibeFilterMismatch]  = useState(false);
 
   // ── UI state ───────────────────────────────────────────────────────────────
   const [activeTab,   setActiveTab]   = useState("explore");
@@ -635,7 +636,7 @@ export default function App() {
     setRadius(750);
     setRecs([]); setRestaurants([]); setHistory([]);
     setExcluded(new Set()); setCustomWeights(null); setPrefLabel(null); setAdvanced({});
-    setNoMatch(false); setNoMatchQuery(null); setPriceFilterMismatch(false); setSelectedRec(null);
+    setNoMatch(false); setNoMatchQuery(null); setPriceFilterMismatch(false); setVibeFilterMismatch(false); setSelectedRec(null);
   };
 
   // ── Scroll to card when marker is clicked ─────────────────────────────────
@@ -713,10 +714,14 @@ export default function App() {
     }
     if (advanced.vibe === "quiet") {
       const f = out.filter(r => (r.reviews_count || 0) < 400);
-      if (f.length) out = f;
+      if (f.length) { out = f; setVibeFilterMismatch(false); }
+      else { setVibeFilterMismatch(true); return; }
     } else if (advanced.vibe === "lively") {
       const f = out.filter(r => (r.reviews_count || 0) >= 400);
-      if (f.length) out = f;
+      if (f.length) { out = f; setVibeFilterMismatch(false); }
+      else { setVibeFilterMismatch(true); return; }
+    } else {
+      setVibeFilterMismatch(false);
     }
     setRecs(out);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -793,6 +798,18 @@ export default function App() {
     return out;
   };
 
+  // ── Enrich agent picks with engine sub-scores for score breakdown display ──
+  const enrichWithScores = (picks) => {
+    if (!profile) return picks;
+    const engineScored = scoreRestaurants(picks, profile, { weights: customWeights });
+    return picks.map(pick => {
+      const e = engineScored.find(s => s.place_id === pick.place_id || s.name === pick.name);
+      return e
+        ? { ...pick, cuisineScore: e.cuisineScore, ratingScore: e.ratingScore, priceScore: e.priceScore, distScore: e.distScore }
+        : pick;
+    });
+  };
+
   // ── For You agent — profile-driven, replaces engine for initial picks ──────
   const triggerForYouAgent = async (existingOverride) => {
     if (!userLatLng || !profile) return;
@@ -817,10 +834,11 @@ export default function App() {
       });
       const d = await res.json();
       if (d.picks?.length) {
-        const filtered = applyAgentFilters(d.picks);
-        agentPicksRef.current = filtered;
-        setRecs(filtered);
+        const enriched = enrichWithScores(d.picks);
+        agentPicksRef.current = enriched; // unfiltered — reactive effect handles filter changes
+        setRecs(applyAgentFilters(enriched));
         setPriceFilterMismatch(false);
+        setVibeFilterMismatch(false);
       } else {
         // Fallback to engine if agent finds nothing
         agentModeRef.current = false;
@@ -855,9 +873,9 @@ export default function App() {
       });
       const d = await res.json();
       if (d.picks?.length) {
-        const filtered = applyAgentFilters(d.picks);
-        agentPicksRef.current = filtered;
-        setRecs(filtered);
+        const enriched = enrichWithScores(d.picks);
+        agentPicksRef.current = enriched;
+        setRecs(applyAgentFilters(enriched));
         setNoMatch(false);
       } else {
         agentModeRef.current = false;
@@ -888,13 +906,14 @@ export default function App() {
       });
       const d = await res.json();
       if (d.picks?.length) {
-        const filtered = applyAgentFilters(d.picks);
-        agentPicksRef.current = filtered;
-        setRecs(filtered);
+        const enriched = enrichWithScores(d.picks);
+        agentPicksRef.current = enriched;
+        setRecs(applyAgentFilters(enriched));
         setPrefLabel(d.summary);
         setNoMatch(false);
         setNoMatchQuery(null);
         setPriceFilterMismatch(false);
+        setVibeFilterMismatch(false);
         showToast(`🎯 ${d.summary || "Found your picks"}`);
       } else {
         agentModeRef.current = false;
@@ -934,12 +953,13 @@ export default function App() {
       });
       const d = await res.json();
       if (d.picks?.length) {
-        const filtered = applyAgentFilters(d.picks);
-        agentPicksRef.current = filtered;
-        setRecs(filtered);
+        const enriched = enrichWithScores(d.picks);
+        agentPicksRef.current = enriched;
+        setRecs(applyAgentFilters(enriched));
         setPrefLabel(modeKey === "trending" ? "Trending now" : "Hidden gems");
         setNoMatch(false);
         setPriceFilterMismatch(false);
+        setVibeFilterMismatch(false);
       } else {
         agentModeRef.current = false;
         setNoMatch(true);
@@ -1195,7 +1215,7 @@ export default function App() {
                         onClick={() => { agentModeCtxRef.current = null;
                           prefTextRef.current = ""; agentPicksRef.current = [];
                           setPrefLabel(null); setCustomWeights(null); setAdvanced({});
-                          setNoMatch(false); setNoMatchQuery(null); setPriceFilterMismatch(false);
+                          setNoMatch(false); setNoMatchQuery(null); setPriceFilterMismatch(false); setVibeFilterMismatch(false);
                           triggerForYouAgent(); }}>✕</span>
                     </motion.div>
                   )}
@@ -1306,6 +1326,30 @@ export default function App() {
 
                 {/* Cards */}
                 <div style={{ padding:"12px 14px 180px" }}>
+                  {/* Vibe filter mismatch banner */}
+                  {vibeFilterMismatch && (
+                    <motion.div initial={{ opacity:0, y:-6 }} animate={{ opacity:1, y:0 }}
+                      style={{ background:"#f3e8ff", border:"1.5px solid #a855f7",
+                        borderRadius:14, padding:"14px 16px", marginBottom:14 }}>
+                      <div style={{ fontSize:13, color:"#3c4043", marginBottom:10, lineHeight:1.5 }}>
+                        Current picks don't match a <strong>{advanced.vibe}</strong> vibe. Search for new picks that do?
+                      </div>
+                      <motion.button whileTap={{ scale:0.96 }}
+                        onClick={() => {
+                          setVibeFilterMismatch(false);
+                          if (agentModeCtxRef.current === "trending" || agentModeCtxRef.current === "hidden")
+                            triggerModeAgent(agentModeCtxRef.current);
+                          else if (prefTextRef.current) runPrefAgent(prefTextRef.current);
+                          else triggerForYouAgent();
+                        }}
+                        style={{ padding:"8px 18px", background:"#9333ea", color:"white",
+                          border:"none", borderRadius:20, fontSize:13, fontWeight:700,
+                          cursor:"pointer", fontFamily:"'Google Sans',sans-serif" }}>
+                        Search now →
+                      </motion.button>
+                    </motion.div>
+                  )}
+
                   {/* Price filter mismatch banner — shown above cards */}
                   {priceFilterMismatch && (
                     <motion.div initial={{ opacity:0, y:-6 }} animate={{ opacity:1, y:0 }}
