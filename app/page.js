@@ -628,9 +628,11 @@ export default function App() {
     agentModeCtxRef.current = null;
     agentPicksRef.current = [];
     prefTextRef.current = "";
+    setMode("all");
+    setSheetSnap("half");
     setRecs([]); setRestaurants([]); setHistory([]);
     setExcluded(new Set()); setCustomWeights(null); setPrefLabel(null);
-    setNoMatch(false); setSelectedRec(null);
+    setNoMatch(false); setPriceFilterMismatch(false); setSelectedRec(null);
   };
 
   // ── Scroll to card when marker is clicked ─────────────────────────────────
