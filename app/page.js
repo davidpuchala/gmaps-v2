@@ -8,7 +8,6 @@ import { GoogleMap, useJsApiLoader, Marker, Circle } from "@react-google-maps/ap
 // ── Constants ────────────────────────────────────────────────────────────────
 const MODES = [
   { key:"all",       label:"✨ For You"  },
-  { key:"open",      label:"🟢 Open now" },
   { key:"trending",  label:"🔥 Trending" },
   { key:"hidden",    label:"💎 Hidden"   },
 ];
@@ -774,12 +773,6 @@ export default function App() {
     if (key === "trending" || key === "hidden") {
       setMode(key);
       triggerModeAgent(key);
-    } else if (key === "open") {
-      setMode(key);
-      // If agent owns recs, filter them by open_now; engine handles non-agent mode
-      if (agentModeRef.current && agentPicksRef.current.length) {
-        setRecs(agentPicksRef.current.filter(r => r.open_now !== false));
-      }
     } else {
       // "all" — hand control back to engine
       agentModeRef.current = false;
@@ -1067,6 +1060,28 @@ export default function App() {
                                   <button key={label}
                                     onPointerDown={e => e.stopPropagation()}
                                     onClick={() => setAdvanced(a => ({ ...a, price_max: val }))}
+                                    style={{ flex:1, padding:"6px 0", border:"1.5px solid",
+                                      borderColor: active ? "#1a73e8" : "#dadce0",
+                                      borderRadius:20, background: active ? "#e8f0fe" : "white",
+                                      color: active ? "#1a73e8" : "#5f6368",
+                                      fontSize:12, fontWeight:600, cursor:"pointer",
+                                      fontFamily:"'Google Sans',sans-serif" }}>
+                                    {label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                          {/* Open Now */}
+                          <div>
+                            <div style={{ fontSize:12, color:"#5f6368", marginBottom:6 }}>Availability</div>
+                            <div style={{ display:"flex", gap:6 }}>
+                              {[["Any",false],["Open Now",true]].map(([label, val]) => {
+                                const active = (advanced.open_now || false) === val;
+                                return (
+                                  <button key={label}
+                                    onPointerDown={e => e.stopPropagation()}
+                                    onClick={() => setAdvanced(a => ({ ...a, open_now: val }))}
                                     style={{ flex:1, padding:"6px 0", border:"1.5px solid",
                                       borderColor: active ? "#1a73e8" : "#dadce0",
                                       borderRadius:20, background: active ? "#e8f0fe" : "white",
