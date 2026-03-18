@@ -555,7 +555,8 @@ export default function App() {
   const cardRefs        = useRef({});
   const [vh,        setVh]        = useState(812);   // SSR-safe viewport height
   const [sheetSnap, setSheetSnap] = useState("half");
-  const dragControls = useDragControls();
+  const dragControls  = useDragControls();
+  const agentModeRef  = useRef(false); // when true, agent owns recs — skip engine re-score
 
   // ── Map state ──────────────────────────────────────────────────────────────
   const [userLatLng, setUserLatLng] = useState(null);
@@ -600,9 +601,10 @@ export default function App() {
     setProfile(synthesizeProfile(MOCK_USERS[email]));
     setUserLatLng(coords);
     setLoggedIn(true);
+    agentModeRef.current = false;
     setRecs([]); setRestaurants([]); setHistory([]);
     setExcluded(new Set()); setCustomWeights(null); setPrefLabel(null);
-    setSelectedRec(null);
+    setNoMatch(false); setSelectedRec(null);
   };
 
   // ── Scroll to card when marker is clicked ─────────────────────────────────
@@ -646,6 +648,7 @@ export default function App() {
 
   // ── Re-score whenever inputs change ───────────────────────────────────────
   useEffect(() => {
+    if (agentModeRef.current) return; // agent owns recs — don't overwrite
     if (!profile || !restaurants.length) return;
     const scored  = scoreRestaurants(restaurants, profile, { mode, advanced, weights: customWeights });
     const visible = scored.filter(r => !excluded.has(r.name)).slice(0, 3);
@@ -699,21 +702,35 @@ export default function App() {
     setExcluded(ex => new Set([...ex, ...names]));
   };
 
-  // ── Natural language preference ────────────────────────────────────────────
+  // ── Natural language preference → real agent ──────────────────────────────
   const handlePrefSubmit = async () => {
     if (!prefInput.trim() || prefLoading) return;
     setPrefLoading(true);
     try {
-      const res = await fetch("/api/parse-pref", {
+      const res = await fetch("/api/agent", {
         method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ text: prefInput }),
+        body: JSON.stringify({
+          text: prefInput,
+          profile,
+          lat: userLatLng?.lat,
+          lng: userLatLng?.lng,
+          radius,
+          existingRestaurants: restaurants,
+        }),
       });
       const d = await res.json();
-      setCustomWeights(d.weights);
-      setAdvanced(a => ({ ...a, ...d.filters, cuisine_override: d.cuisine_override || null }));
-      setPrefLabel(d.summary_label);
+      if (d.picks?.length) {
+        agentModeRef.current = true;
+        setRecs(d.picks);
+        if (d.allRestaurants?.length) setRestaurants(d.allRestaurants);
+        setPrefLabel(d.summary);
+        setNoMatch(false);
+        showToast(`🎯 ${d.summary || "Found your picks"}`);
+      } else {
+        setNoMatch(true);
+        showToast("No matches found — try a wider radius");
+      }
       setPrefInput("");
-      showToast(`🎯 ${d.summary_label || "Preferences updated"}`);
     } catch {}
     setPrefLoading(false);
   };
@@ -952,8 +969,8 @@ export default function App() {
                         borderRadius:20, padding:"5px 14px", fontSize:12, fontWeight:600 }}>
                       🎯 {prefLabel}
                       <span style={{ cursor:"pointer", opacity:0.6 }}
-                        onClick={() => { setPrefLabel(null); setCustomWeights(null);
-                          setAdvanced({}); setNoMatch(false); }}>✕</span>
+                        onClick={() => { agentModeRef.current = false; setPrefLabel(null);
+                          setCustomWeights(null); setAdvanced({}); setNoMatch(false); }}>✕</span>
                     </motion.div>
                   )}
                 </div>
