@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import { MOCK_USERS } from "../lib/users";
-import { synthesizeProfile, scoreRestaurants } from "../lib/engine";
+import { synthesizeProfile, scoreRestaurants, DEFAULT_WEIGHTS } from "../lib/engine";
 import { GoogleMap, useJsApiLoader, Marker, Circle } from "@react-google-maps/api";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -399,7 +399,7 @@ function YouTab({ user, profile, history }) {
 // PIPELINE TAB
 // ══════════════════════════════════════════════════════════════════════════════
 function PipelineTab({ user, profile, weights, prefLabel }) {
-  const w = weights || { cuisine:0.40, rating:0.30, price:0.20, distance:0.10 };
+  const w = weights || DEFAULT_WEIGHTS;
   const totalReviews = Object.values(user?.reviewed_cuisines || {}).reduce((s,v)=>s+v.count,0);
   const totalVisits  = Object.values(user?.visited_types || {}).reduce((s,v)=>s+v,0);
 
