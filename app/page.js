@@ -629,6 +629,7 @@ export default function App() {
     agentPicksRef.current = [];
     prefTextRef.current = "";
     setMode("all");
+    setActiveTab("explore");
     setSheetSnap("half");
     setRecs([]); setRestaurants([]); setHistory([]);
     setExcluded(new Set()); setCustomWeights(null); setPrefLabel(null);
