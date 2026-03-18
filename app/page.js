@@ -713,23 +713,16 @@ export default function App() {
       if (f.length) out = f;
     }
     if (advanced.vibe === "quiet") {
-      // Score each pick on quietness: fewer reviews + lower price level = quieter
-      const scored = out.map(r => ({
-        ...r,
-        vibeScore: -(r.reviews_count || 0) - (r.price_level || 2) * 50,
-      })).sort((a, b) => b.vibeScore - a.vibeScore);
-      const quietest = scored.filter(r => (r.reviews_count || 0) < 600);
-      const f = quietest.length ? quietest : scored.slice(0, 1); // always at least 1
-      if (f.length < out.length) { out = f; setVibeFilterMismatch(false); }
+      const f = out
+        .filter(r => (r.reviews_count || 0) < 600)
+        .sort((a, b) => (a.reviews_count || 0) - (b.reviews_count || 0));
+      if (f.length) { out = f; setVibeFilterMismatch(false); }
       else { setVibeFilterMismatch(true); return; }
     } else if (advanced.vibe === "lively") {
-      const scored = out.map(r => ({
-        ...r,
-        vibeScore: (r.reviews_count || 0) + (r.price_level || 2) * 50,
-      })).sort((a, b) => b.vibeScore - a.vibeScore);
-      const liveliest = scored.filter(r => (r.reviews_count || 0) >= 300);
-      const f = liveliest.length ? liveliest : scored.slice(0, 1);
-      if (f.length < out.length) { out = f; setVibeFilterMismatch(false); }
+      const f = out
+        .filter(r => (r.reviews_count || 0) >= 300)
+        .sort((a, b) => (b.reviews_count || 0) - (a.reviews_count || 0));
+      if (f.length) { out = f; setVibeFilterMismatch(false); }
       else { setVibeFilterMismatch(true); return; }
     } else {
       setVibeFilterMismatch(false);
@@ -1343,21 +1336,30 @@ export default function App() {
                       style={{ background:"#f3e8ff", border:"1.5px solid #a855f7",
                         borderRadius:14, padding:"14px 16px", marginBottom:14 }}>
                       <div style={{ fontSize:13, color:"#3c4043", marginBottom:10, lineHeight:1.5 }}>
-                        Current picks don't match a <strong>{advanced.vibe}</strong> vibe. Search for new picks that do?
+                        None of your current picks match a <strong>{advanced.vibe}</strong> vibe.
                       </div>
-                      <motion.button whileTap={{ scale:0.96 }}
-                        onClick={() => {
-                          setVibeFilterMismatch(false);
-                          if (agentModeCtxRef.current === "trending" || agentModeCtxRef.current === "hidden")
-                            triggerModeAgent(agentModeCtxRef.current);
-                          else if (prefTextRef.current) runPrefAgent(prefTextRef.current);
-                          else triggerForYouAgent();
-                        }}
-                        style={{ padding:"8px 18px", background:"#9333ea", color:"white",
-                          border:"none", borderRadius:20, fontSize:13, fontWeight:700,
-                          cursor:"pointer", fontFamily:"'Google Sans',sans-serif" }}>
-                        Search now →
-                      </motion.button>
+                      <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                        <motion.button whileTap={{ scale:0.96 }}
+                          onClick={() => { setAdvanced(a => ({ ...a, vibe: null })); setVibeFilterMismatch(false); }}
+                          style={{ padding:"8px 18px", background:"#9333ea", color:"white",
+                            border:"none", borderRadius:20, fontSize:13, fontWeight:700,
+                            cursor:"pointer", fontFamily:"'Google Sans',sans-serif" }}>
+                          Clear vibe filter
+                        </motion.button>
+                        <motion.button whileTap={{ scale:0.96 }}
+                          onClick={() => {
+                            setVibeFilterMismatch(false);
+                            if (agentModeCtxRef.current === "trending" || agentModeCtxRef.current === "hidden")
+                              triggerModeAgent(agentModeCtxRef.current);
+                            else if (prefTextRef.current) runPrefAgent(prefTextRef.current);
+                            else triggerForYouAgent();
+                          }}
+                          style={{ padding:"8px 18px", background:"white", color:"#9333ea",
+                            border:"1.5px solid #a855f7", borderRadius:20, fontSize:13, fontWeight:600,
+                            cursor:"pointer", fontFamily:"'Google Sans',sans-serif" }}>
+                          Search for {advanced.vibe} places
+                        </motion.button>
+                      </div>
                     </motion.div>
                   )}
 
