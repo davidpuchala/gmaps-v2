@@ -526,6 +526,7 @@ export default function App() {
   const [prefInput,      setPrefInput]      = useState("");
   const [prefLoading,    setPrefLoading]    = useState(false);
   const [showAdvanced,   setShowAdvanced]   = useState(false);
+  const [noMatch,        setNoMatch]        = useState(false);
 
   // ── UI state ───────────────────────────────────────────────────────────────
   const [activeTab,   setActiveTab]   = useState("explore");
@@ -621,6 +622,15 @@ export default function App() {
     if (!profile || !restaurants.length) return;
     const scored  = scoreRestaurants(restaurants, profile, { mode, advanced, weights: customWeights });
     const visible = scored.filter(r => !excluded.has(r.name)).slice(0, 3);
+
+    // Detect cuisine_override with no matching results in this radius
+    if (advanced.cuisine_override?.length) {
+      const overrideSet = new Set(advanced.cuisine_override);
+      const anyMatch = visible.some(r => (r.types || []).some(t => overrideSet.has(t)));
+      setNoMatch(!anyMatch);
+    } else {
+      setNoMatch(false);
+    }
 
     // Set placeholder immediately, then stream in explanations
     setRecs(visible.map(r => ({ ...r, explanation: null })));
@@ -916,7 +926,7 @@ export default function App() {
                       🎯 {prefLabel}
                       <span style={{ cursor:"pointer", opacity:0.6 }}
                         onClick={() => { setPrefLabel(null); setCustomWeights(null);
-                          setAdvanced({}); }}>✕</span>
+                          setAdvanced({}); setNoMatch(false); }}>✕</span>
                     </motion.div>
                   )}
                 </div>
@@ -1029,6 +1039,10 @@ export default function App() {
                   {loadingRecs
                     ? <div style={{ textAlign:"center", padding:32, color:"#5f6368", fontSize:13 }}>
                         Finding your picks…
+                      </div>
+                    : noMatch
+                    ? <div style={{ textAlign:"center", padding:32, color:"#5f6368", fontSize:13 }}>
+                        Unable to find your picks — increase the radius or refine your search.
                       </div>
                     : recs.length === 0
                     ? <div style={{ textAlign:"center", padding:32, color:"#5f6368", fontSize:13 }}>
