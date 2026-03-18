@@ -632,6 +632,7 @@ export default function App() {
     setMode("all");
     setActiveTab("explore");
     setSheetSnap("half");
+    setRadius(750);
     setRecs([]); setRestaurants([]); setHistory([]);
     setExcluded(new Set()); setCustomWeights(null); setPrefLabel(null); setAdvanced({});
     setNoMatch(false); setNoMatchQuery(null); setPriceFilterMismatch(false); setSelectedRec(null);
