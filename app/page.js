@@ -929,7 +929,7 @@ export default function App() {
         </div>
 
         {/* Scrollable tab content */}
-        <div ref={sheetContentRef} style={{ flex:1, overflowY:"auto", WebkitOverflowScrolling:"touch" }}>
+        <div ref={sheetContentRef} style={{ flex:1, minHeight:0, overflowY:"auto", WebkitOverflowScrolling:"touch" }}>
           <AnimatePresence mode="wait">
             {activeTab === "explore" && (
               <motion.div key="explore"
@@ -1079,7 +1079,7 @@ export default function App() {
                 <div style={{ borderTop:"1px solid #f1f3f4" }}/>
 
                 {/* Cards */}
-                <div style={{ padding:"12px 14px" }}>
+                <div style={{ padding:"12px 14px 180px" }}>
                   {loadingRecs
                     ? <div style={{ textAlign:"center", padding:32, color:"#5f6368", fontSize:13 }}>
                         Finding your picks…
